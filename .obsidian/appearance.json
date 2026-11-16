@@ -1,6 +1,7 @@
 {
   "showRibbon": true,
-  "cssTheme": "Obuntu",
+  "cssTheme": "Minimal",
   "theme": "obsidian",
-  "baseFontSizeAction": true
+  "baseFontSizeAction": true,
+  "accentColor": ""
 }

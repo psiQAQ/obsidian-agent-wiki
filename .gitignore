@@ -4,6 +4,10 @@
 /.obsidian/workspaces.json
 /.obsidian/workspace-mobile.json
 /.obsidian/bookmarks.json
+# 插件发行文件不入库；data.json 提交前须审查凭据与私人信息。
+/.obsidian/plugins/*/*
+!/.obsidian/plugins/*/data.json
+/.obsidian/themes/
 knowledge-base
 
 /.venv/
