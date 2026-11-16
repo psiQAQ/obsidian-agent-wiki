@@ -1,5 +1,11 @@
 {
   "newFileLocation": "root",
   "showUnsupportedFiles": false,
+  "readableLineLength": true,
+  "showLineNumber": true,
+  "rightToLeft": false,
+  "tabSize": 4,
+  "propertiesInDocument": "visible",
+  "promptDelete": false,
   "attachmentFolderPath": "./assets"
 }
