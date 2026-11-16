@@ -17,7 +17,7 @@ obsidian/                              # 整个 Obsidian Vault；本机位于 D:
 │  └─ kepano-obsidian/                 # Steph Ango 上游参考子模块，保留其原有内容
 ├─ .obsidian/                          # 共享设置入库；插件和主题本体留在本机
 ├─ .agents/skills/                     # Agent 可读取的知识库与 Obsidian 操作技能
-├─ scripts/                            # 初始化知识库、只读检查资料和链接的工具
+├─ scripts/                            # 知识库初始化、只读检查及插件恢复工具
 ├─ tests/                              # 工具的验证用例，使用隔离测试材料
 ├─ docs/                               # 设计依据、来源材料和方案选择记录
 ├─ pyproject.toml、uv.lock              # 共享 Python 工具的依赖声明与锁定版本
@@ -159,46 +159,21 @@ $obsidianCli = 'obsidian'
 
 以下用于新检出仓库或恢复缺失插件，需操作者明确决定安装后运行。已经存在 `manifest.json` 的插件跳过，不作为升级流程。`community-plugins.json` 只包含启用的插件；其他曾安装但未启用的插件需另行指定。
 
-先将启用清单读入变量，避免安装时清单变化影响后续项目。对每个插件，安装前在内存保留已有配置，安装后恢复并核对，再启用。不要在循环未完成时关闭该 PowerShell 窗口。
+批量恢复由 [restore_plugins.py](scripts/restore_plugins.py) 执行，复用前述 Python 环境，无需新增依赖。在仓库根目录先预览：
 
 ```powershell
-$pluginIds = @(Get-Content -LiteralPath '.obsidian/community-plugins.json' -Raw | ConvertFrom-Json)
-foreach ($pluginId in $pluginIds) {
-    $pluginDir = Join-Path '.obsidian/plugins' $pluginId
-    $manifestPath = Join-Path $pluginDir 'manifest.json'
-    if (Test-Path -LiteralPath $manifestPath) { continue }
-    $configPath = Join-Path $pluginDir 'data.json'
-    $configBytes = $null
-    if (Test-Path -LiteralPath $configPath) {
-        $configBytes = [System.IO.File]::ReadAllBytes((Join-Path (Get-Location) $configPath))
-    }
-    try {
-        $installOutput = & $obsidianCli 'vault=obsidian' plugin:install "id=$pluginId" 2>&1
-        $installOutput
-        if ($LASTEXITCODE -ne 0 -or "$installOutput" -match 'Error:' -or
-            !(Test-Path -LiteralPath $manifestPath) -or
-            !(Test-Path -LiteralPath (Join-Path $pluginDir 'main.js'))) {
-            throw "插件安装失败：$pluginId；检查上方返回信息。"
-        }
-    } finally {
-        if ($null -ne $configBytes) {
-            New-Item -ItemType Directory -Force -Path $pluginDir | Out-Null
-            [System.IO.File]::WriteAllBytes((Join-Path (Get-Location) $configPath), $configBytes)
-        }
-    }
-    if ($null -ne $configBytes) {
-        $restoredBytes = [System.IO.File]::ReadAllBytes((Join-Path (Get-Location) $configPath))
-        if ([Convert]::ToBase64String($restoredBytes) -cne [Convert]::ToBase64String($configBytes)) {
-            throw "配置核对失败：$pluginId；停止启用。"
-        }
-    }
-    & $obsidianCli 'vault=obsidian' plugin:enable "id=$pluginId"
-    & $obsidianCli 'vault=obsidian' plugin "id=$pluginId"
-}
-& $obsidianCli 'vault=obsidian' plugins:enabled 'filter=community' versions
+uv run --no-sync python scripts/restore_plugins.py --vault obsidian --dry-run
 ```
 
-逐项核对 `plugin` 输出中的版本与 `enabled true`，再确认最终启用列表与 `$pluginIds` 相符。CLI 即使命令失败也可能返回退出码 0，应阅读返回信息。启用状态写入磁盘可能稍有延迟；等待文件稳定后再核对设置。若安装失败，循环会停止并恢复已有配置；保留错误输出，解决网络或插件可用性问题后再继续，不删除配置重新尝试。
+确认待安装项后执行：
+
+```powershell
+uv run --no-sync python scripts/restore_plugins.py --vault obsidian
+```
+
+脚本先读取启用清单并核对 CLI 的 Vault 路径，再逐项安装缺失插件。已有 `data.json` 暂存于内存，安装成功或失败都会恢复；核对配置字节后才启用，并检查插件是否报告已启用。不要在运行中关闭终端。若官方 CLI 不在 PATH，可用 `--cli '官方 CLI 的完整路径'` 指定；Windows 使用安装目录内的 `Obsidian.com`。
+
+成功时输出“恢复完成”；没有缺失插件时输出“没有缺失插件，无需安装”。安装或启用失败时脚本停止后续操作并返回非零退出码，保留终端中的错误输出，处理原因后再继续。CLI 返回退出码 0 时仍会检查错误文本和实际安装文件，不会自动删除配置重试。最后核对输出中的启用列表与预期清单，以及插件实际设置；启用状态写入磁盘可能稍有延迟。
 
 重装已存在的插件时，先在已忽略的 `.cache/` 中保全原包、配置及启用清单并确认可读，再卸载；安装失败或设置不兼容时恢复这三项。**卸载不能当作保留配置的操作。** 本机 Minimal Settings `9.0.0` 的实测中，卸载删除了 `data.json`，重新安装后也未创建它；恢复原配置再启用后设置保持一致，详见[重装验证记录](docs/plugin-reinstall-verification.md)。
 
