@@ -1,0 +1,59 @@
+filters:
+  and:
+    - 'this.file.path.startsWith("knowledge-base/")'
+    - 'file.path.startsWith(this.file.path.split("/").slice(0, 2).join("/") + "/")'
+    - 'file.ext == "md"'
+    - '!file.path.contains("/.git/")'
+    - '!file.path.contains("/.cache/")'
+properties:
+  note.type:
+    displayName: 页面类型
+  note.categories:
+    displayName: 分类
+  note.updated:
+    displayName: 知识更新日期
+  note.sources:
+    displayName: 来源路径
+  note.managed_by:
+    displayName: 维护者
+views:
+  - type: table
+    name: 生成知识
+    filters:
+      and:
+        - 'managed_by == "agent"'
+        - 'type == "source" || type == "entity" || type == "concept" || type == "analysis" || type == "archive" || type == "overview" || type == "category"'
+        - '!file.inFolder(this.file.path.split("/").slice(0, 2).join("/") + "/templates")'
+    order:
+      - file.name
+      - type
+      - categories
+      - updated
+      - sources
+    sort:
+      - property: updated
+        direction: DESC
+  - type: table
+    name: 人工笔记
+    filters:
+      and:
+        - 'file.inFolder(this.file.path.split("/").slice(0, 2).join("/") + "/Notes")'
+    order:
+      - file.name
+      - categories
+      - tags
+      - created
+  - type: table
+    name: 按类别浏览
+    filters:
+      and:
+        - 'managed_by == "agent"'
+        - 'type == "source" || type == "entity" || type == "concept" || type == "analysis" || type == "archive" || type == "overview" || type == "category"'
+        - '!file.inFolder(this.file.path.split("/").slice(0, 2).join("/") + "/templates")'
+    groupBy:
+      property: categories
+      direction: ASC
+    order:
+      - file.name
+      - type
+      - categories

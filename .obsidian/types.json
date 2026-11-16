@@ -1,0 +1,17 @@
+{
+  "types": {
+    "type": "text",
+    "managed_by": "text",
+    "categories": "multitext",
+    "tags": "tags",
+    "aliases": "aliases",
+    "created": "date",
+    "updated": "date",
+    "archived": "date",
+    "collected": "date",
+    "published": "date",
+    "sources": "multitext",
+    "source_url": "text",
+    "status": "text"
+  }
+}

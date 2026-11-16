@@ -1,4 +1,5 @@
 {
   "newFileLocation": "root",
-  "showUnsupportedFiles": false
+  "showUnsupportedFiles": false,
+  "attachmentFolderPath": "./assets"
 }

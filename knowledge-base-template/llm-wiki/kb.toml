@@ -1,0 +1,11 @@
+# All paths are relative to this knowledge-base root. Notes stays fixed.
+version = 1
+
+[paths]
+raw = "raw"
+wiki = "wiki"
+reports = "reports"
+templates = "templates"
+index = "wiki/index.md"
+log = "wiki/log.md"
+overview = "wiki/overview.md"

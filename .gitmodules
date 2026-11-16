@@ -1,0 +1,3 @@
+[submodule "kepano-obsidian"]
+	path = knowledge-base-template/kepano-obsidian
+	url = https://github.com/kepano/kepano-obsidian.git
