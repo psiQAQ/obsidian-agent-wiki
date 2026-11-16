@@ -6,3 +6,7 @@
 /.obsidian/bookmarks.json
 knowledge-base
 
+/.venv/
+/.cache/
+__pycache__/
+*.py[cod]

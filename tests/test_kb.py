@@ -1,0 +1,283 @@
+"""Acceptance/regression cases using only repository-local disposable fixtures."""
+
+from contextlib import redirect_stdout, redirect_stderr
+import io
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+import tempfile
+import unittest
+from urllib.parse import quote
+
+import yaml
+
+
+REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO / "scripts"))
+from check_kb import inspect, main as check_main
+from evidence import candidates, contains
+from init_kb import initialize
+from kb_common import ConfigError, KnowledgeBase, read_note
+
+
+def put(path, text):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8", newline="\n")
+
+
+def note(path, body, **changes):
+    metadata = dict(type="concept", managed_by="agent", categories=[], tags=[], aliases=[], created="2026-11-16", updated="2026-11-16", sources=["../raw/原始 资料.md"])
+    metadata.update(changes)
+    put(path, "---\n" + yaml.safe_dump(metadata, allow_unicode=True, sort_keys=False) + "---\n\n" + body)
+
+
+class WikiCase(unittest.TestCase):
+    def setUp(self):
+        cache = REPO / ".cache" / "tests"
+        cache.mkdir(parents=True, exist_ok=True)
+        self.temporary = tempfile.TemporaryDirectory(dir=cache, prefix="kb-")
+        self.addCleanup(self.temporary.cleanup)
+        self.vault = Path(self.temporary.name)
+        self.root = self.vault / "knowledge-base" / "中文 A"
+        self.template = self.vault / "knowledge-base-template" / "llm-wiki"
+        shutil.copytree(REPO / "knowledge-base-template" / "llm-wiki", self.template)
+        shutil.copytree(self.template, self.root)
+
+    def findings(self):
+        return inspect(self.root, self.vault)
+
+    def codes(self):
+        return {item.code for item in self.findings()}
+
+    def populate(self, body="样本数量为 42K。", raw="样本数量为 42K。"):
+        put(self.root / "raw" / "原始 资料.md", "# 原始资料\n\n" + raw)
+        note(self.root / "wiki" / "概念.md", "# 概念\n\n" + body + "\n\n[原文](../raw/" + quote("原始 资料.md") + ")\n")
+        note(self.root / "wiki" / "overview.md", "# 综述\n\n[概念](概念.md)\n", type="overview")
+        self.index()
+
+    def index(self):
+        rows = ["# 知识索引", "", "| 页面 | 摘要 | Updated |", "| --- | --- | --- |"]
+        for path in sorted((self.root / "wiki").rglob("*.md")):
+            if path.name in {"index.md", "log.md"}:
+                continue
+            metadata = read_note(path).metadata
+            if metadata.get("managed_by") != "agent":
+                continue
+            value = metadata.get("archived") if metadata.get("type") == "archive" else metadata.get("updated")
+            rows.append(f"| [{path.stem}]({quote(path.relative_to(self.root / 'wiki').as_posix())}) | 摘要 | {value} |")
+        put(self.root / "wiki" / "index.md", "\n".join(rows) + "\n")
+
+    def test_empty_template_and_manual_copy(self):
+        self.assertEqual(self.findings(), [])
+        put(self.root / "README.md", "# 人工复制的库\n\n手工填写简介。\n")
+        result = subprocess.run(["git", "init", "--initial-branch=main", str(self.root)], capture_output=True)
+        self.assertEqual(result.returncode, 0)
+        self.assertTrue((self.root / ".git").is_dir())
+        self.assertEqual(self.findings(), [])
+
+    def test_initialize_unicode_spaces_and_no_overwrite(self):
+        target = initialize(self.vault, "新建 中文 库", "手工思考与可靠资料")
+        self.assertIn("手工思考与可靠资料", (target / "README.md").read_text(encoding="utf-8"))
+        self.assertTrue((target / ".git").is_dir())
+        self.assertFalse((target / ".obsidian").exists())
+        original = (target / "README.md").read_bytes()
+        with self.assertRaises(FileExistsError):
+            initialize(self.vault, "新建 中文 库", "different")
+        self.assertEqual(original, (target / "README.md").read_bytes())
+
+    def test_init_rejects_escape_and_windows_special_names(self):
+        for name in ("../outside", "a/b", "a\\b", "C:\\outside", "CON", "nul.txt", " name", "name.", ".git"):
+            with self.subTest(name=name), self.assertRaises(ValueError):
+                initialize(self.vault, name, "description")
+
+    def test_mapped_nested_layout(self):
+        config = self.root / "kb.toml"
+        text = config.read_text(encoding="utf-8").replace('"raw"', '"资料"').replace('"wiki"', '"编译/知识"').replace('"wiki/', '"编译/知识/')
+        put(config, text)
+        (self.root / "raw").rename(self.root / "资料")
+        (self.root / "编译").mkdir()
+        (self.root / "wiki").rename(self.root / "编译" / "知识")
+        self.assertEqual(self.findings(), [])
+
+    def test_mapping_escape_and_overlap_are_rejected(self):
+        path = self.root / "kb.toml"
+        original = path.read_text(encoding="utf-8")
+        for replacement in ('"../other"', '"wiki"', '"wiki/raw"', '"."'):
+            put(path, original.replace('raw = "raw"', 'raw = ' + replacement))
+            with self.subTest(replacement=replacement), self.assertRaises(ConfigError):
+                KnowledgeBase.load(self.root)
+
+    def test_mapping_requires_toml_table(self):
+        put(self.root / "kb.toml", 'version = 1\npaths = ["raw", "wiki", "reports", "templates", "index", "log", "overview"]\n')
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            self.assertEqual(check_main([str(self.root)]), 2)
+
+    def test_faithful_content_is_read_only(self):
+        self.populate()
+        before = {path: path.read_bytes() for path in self.root.rglob("*") if path.is_file()}
+        self.assertEqual(self.findings(), [])
+        self.assertEqual(before, {path: path.read_bytes() for path in before})
+
+    def test_fake_value_is_review_not_a_factual_verdict(self):
+        self.populate(body="样本数量为 99K。")
+        matches = [item for item in self.findings() if item.code == "evidence-candidate"]
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].level, "review")
+        self.assertIn("99K", matches[0].message)
+
+    def test_source_title_with_hash_is_a_literal_path(self):
+        self.populate()
+        old = self.root / "raw" / "原始 资料.md"
+        target = old.with_name("C# 原始资料.md")
+        old.rename(target)
+        for page in (self.root / "wiki" / "概念.md", self.root / "wiki" / "overview.md"):
+            text = page.read_text(encoding="utf-8")
+            text = text.replace("../raw/原始 资料.md", "../raw/" + target.name)
+            text = text.replace(quote(old.name), quote(target.name))
+            put(page, text)
+        self.assertEqual(self.findings(), [])
+
+    def test_raw_metadata_is_not_evidence(self):
+        self.populate(body="数据收集始于 2026-11-16。", raw="无日期说明。")
+        put(self.root / "raw" / "原始 资料.md", "---\ncollected: 2026-11-16\n---\n# 原件\n\n无日期说明。")
+        self.assertIn("evidence-candidate", self.codes())
+
+    def test_old_raw_bookkeeping_is_not_evidence(self):
+        self.populate(body="数据始于 2026-11-16。", raw="无日期。")
+        put(self.root / "raw" / "原始 资料.md", "# 原件\n\n> Source: example\n> Collected: 2026-11-16\n\n无日期。")
+        self.assertIn("evidence-candidate", self.codes())
+
+    def test_code_examples_are_not_links_or_evidence(self):
+        self.populate(body='`[例子](missing.md)`\n\n~~~md\n数据 99999，[[不存在]]\n~~~\n')
+        self.assertEqual(self.findings(), [])
+
+    def test_duplicate_and_wrong_type_frontmatter(self):
+        self.populate()
+        target = self.root / "wiki" / "概念.md"
+        put(target, "---\ntype: concept\ntype: archive\n---\n# Test\n")
+        self.assertIn("invalid-metadata", self.codes())
+        put(target, "---\ntype: [concept]\nmanaged_by: agent\n---\n# Test\n")
+        self.assertIn("page-type", self.codes())
+
+    def test_source_escape_does_not_read_other_library(self):
+        self.populate()
+        other = self.vault / "knowledge-base" / "B" / "raw" / "原始 资料.md"
+        put(other, "只有另一个库包含 99K。")
+        note(self.root / "wiki" / "概念.md", "# 概念\n\n99K", sources=["../../B/raw/原始 资料.md"])
+        self.assertIn("source-scope", self.codes())
+
+    def test_same_named_other_library_does_not_satisfy_link(self):
+        self.populate()
+        put(self.vault / "knowledge-base" / "B" / "wiki" / "其他.md", "# 其他\n")
+        path = self.root / "wiki" / "概念.md"
+        with path.open("a", encoding="utf-8") as stream:
+            stream.write("\n[其他](其他.md)\n")
+        self.assertIn("broken-link", self.codes())
+
+    def test_full_wikilink_stays_in_selected_library(self):
+        self.populate()
+        target = self.root / "wiki" / "概念.md"
+        original = target.read_text(encoding="utf-8")
+        put(target, original + "\n[[knowledge-base/中文 A/wiki/overview]]\n")
+        self.assertEqual(self.findings(), [])
+        put(target, original + "\n[[knowledge-base/B/wiki/overview]]\n")
+        self.assertIn("cross-kb-link", self.codes())
+
+    def test_intentional_human_link_allowed_generated_link_rejected(self):
+        self.populate()
+        note(self.root / "Notes" / "想法.md", "# 想法\n\n[[尚未想清楚]]\n", type="note", managed_by="human", sources=[])
+        self.assertNotIn("broken-link", self.codes())
+        with (self.root / "wiki" / "概念.md").open("a", encoding="utf-8") as stream:
+            stream.write("\n[[尚未想清楚]]\n")
+        self.assertIn("ambiguous-wikilink", self.codes())
+
+    def test_no_material_handles_spaced_paths_and_ignores_fake_record(self):
+        raw = self.root / "raw" / "没有 新内容.md"
+        put(raw, "# 重复资料\n")
+        self.assertIn("unprocessed-raw", self.codes())
+        entry = "## [2026-11-16] ingest | 重复资料\n- Disposition: No material\n- Raw: [原文](../raw/" + quote(raw.name) + ")\n"
+        put(self.root / "wiki" / "log.md", "# 日志\n\n```md\n" + entry + "```\n")
+        self.assertIn("unprocessed-raw", self.codes())
+        put(self.root / "wiki" / "log.md", "# 日志\n\n" + entry)
+        self.assertNotIn("unprocessed-raw", self.codes())
+
+    def test_pdf_evidence_reports_unverified(self):
+        self.populate()
+        put(self.root / "raw" / "paper.pdf", "synthetic test placeholder")
+        note(self.root / "wiki" / "概念.md", "# 概念\n", sources=["../raw/paper.pdf"])
+        self.assertIn("evidence-unverified", self.codes())
+
+    def test_saved_analysis_and_frozen_archive(self):
+        self.populate()
+        note(self.root / "wiki" / "分析.md", "# 分析\n\n样本数量为 42K。", type="analysis")
+        snapshot = self.root / "wiki" / "快照.md"
+        note(snapshot, "# 快照\n\n归档当时的回答。", type="archive", archived="2026-11-15", sources=["概念.md"])
+        self.index()
+        before = snapshot.read_bytes()
+        self.assertIn("archive-stale", self.codes())
+        self.assertEqual(snapshot.read_bytes(), before)
+        self.assertNotIn("source-scope", self.codes())
+
+    def test_index_missing_and_stale_date(self):
+        self.populate()
+        index = self.root / "wiki" / "index.md"
+        original = index.read_text(encoding="utf-8")
+        put(index, original.replace("2026-11-16", "2026-11-14"))
+        self.assertIn("index-date", self.codes())
+        put(index, "# 索引\n")
+        self.assertIn("index-missing", self.codes())
+
+    def test_human_organization_boundary(self):
+        # The Agent performs this workflow; no automatic content rewriting API.
+        misplaced = self.root / "随手记录.md"
+        put(misplaced, "---\ncustom: 保留\ncreated: 2026-01-02\n---\n\n# 想法\n\n我倾向于先观察，而不是急于判断。\n")
+        original = read_note(misplaced)
+        raw = self.root / "raw" / "原件.md"
+        put(raw, "# 原件\n\n不能移动或补属性。")
+        raw_bytes = raw.read_bytes()
+        referring = self.root / "Notes" / "关联笔记.md"
+        note(referring, "# 关联笔记\n\n[个人观点](../随手记录.md)\n", type="note", managed_by="human", sources=[])
+        self.assertIn("human-location", self.codes())
+        destination = self.root / "Notes" / misplaced.name
+        misplaced.rename(destination)
+        self.assertIn("broken-link", self.codes())
+        put(referring, referring.read_text(encoding="utf-8").replace("(../随手记录.md)", "(随手记录.md)"))
+        data = dict(original.metadata)
+        for key, value in {"type": "note", "managed_by": "human", "categories": [], "tags": [], "aliases": []}.items():
+            data.setdefault(key, value)
+        put(destination, "---\n" + yaml.safe_dump(data, allow_unicode=True, sort_keys=False) + "---\n" + original.body)
+        after = read_note(destination)
+        self.assertEqual(after.body, original.body)
+        self.assertEqual(after.metadata["custom"], original.metadata["custom"])
+        self.assertEqual(after.metadata["created"], original.metadata["created"])
+        self.assertEqual(raw.read_bytes(), raw_bytes)
+        self.assertNotIn("human-location", self.codes())
+        self.assertNotIn("broken-link", self.codes())
+
+    def test_cli_exit_codes(self):
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            self.assertEqual(check_main([str(self.root)]), 0)
+            put(self.root / "raw" / "new.md", "# New\n")
+            self.assertEqual(check_main([str(self.root)]), 1)
+            self.assertEqual(check_main([str(self.root / "missing")]), 2)
+
+
+class LiteralBoundaryTests(unittest.TestCase):
+    def test_candidates_do_not_match_larger_values(self):
+        for body, source in (("42K", "142K"), ("3.14", "3.1415"), ("2026-11", "2026-11-16")):
+            with self.subTest(body=body):
+                self.assertFalse(contains(source, candidates(body)[0]))
+
+    def test_small_plain_numbers_require_semantic_review(self):
+        self.assertEqual(candidates("样本 42 个，另有 500 个。"), [])
+
+    def test_multiline_direct_quote(self):
+        body = '> A sufficiently long direct\n> quotation preserved from the source.'
+        found = candidates(body)
+        self.assertEqual(len(found), 1)
+        self.assertTrue(contains("A sufficiently long direct quotation preserved from the source.", found[0]))
+
+
+if __name__ == "__main__":
+    unittest.main()
