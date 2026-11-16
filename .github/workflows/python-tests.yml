@@ -1,0 +1,68 @@
+name: Python tests
+
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'scripts/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - 'knowledge-base-template/llm-wiki/**'
+      - '.github/workflows/**'
+  pull_request:
+    paths:
+      - 'scripts/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - 'knowledge-base-template/llm-wiki/**'
+      - '.github/workflows/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: python-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Python 3.14 / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python 3.14
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.14'
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: '0.11.19'
+          enable-cache: true
+          cache-local-path: ${{ github.workspace }}/.cache/uv
+          cache-dependency-glob: uv.lock
+      - name: Prepare locked environment
+        run: python scripts/setup_env.py
+      - name: Run pytest
+        run: uv run --no-sync python -m pytest
+      - name: Check setup help
+        run: uv run --no-sync python scripts/setup_env.py --help
+      - name: Check initialization help
+        run: uv run --no-sync python scripts/init_kb.py --help
+      - name: Check inspection help
+        run: uv run --no-sync python scripts/check_kb.py --help
+      - name: Check plugin recovery help
+        run: uv run --no-sync python scripts/restore_plugins.py --help

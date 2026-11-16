@@ -188,6 +188,8 @@ uv run --no-sync python -m pytest
 
 测试只使用隔离材料；临时目录及 pytest 缓存留在 `.cache/`，不会读取私有知识库或安装真实 Obsidian 插件。
 
+[GitHub Actions](https://github.com/psiQAQ/obsidian-agent-wiki/actions/workflows/python-tests.yml) 在 Windows、Ubuntu、macOS 上使用 Python 3.14 执行同一环境准备流程、pytest 和脚本帮助检查。push 或 PR 修改脚本、测试、依赖、融合模板或 workflow 时触发，也支持手动运行；仅修改根使用文档不触发。各平台结果独立报告，CI 不验证 Obsidian 桌面界面或真实插件安装。
+
 | 想做的事 | 从哪里开始 |
 | --- | --- |
 | 检查并整理一个知识库 | [体检使用示例](knowledge-base-template/llm-wiki/README.md#检查并整理知识库) |
