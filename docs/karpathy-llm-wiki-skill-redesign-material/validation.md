@@ -37,3 +37,12 @@ Bases 不读取 `kb.toml`。更改模板目录时需同步修改两处模板目�
 本次临时库 `knowledge-base/LLM 验收 A`、`knowledge-base/LLM 验收 B` 与仓库内临时脚本、uv 缓存均在验收后清理；根 `.venv` 是交付环境，予以保留。没有仓库外临时文件或超大文件待清理。
 
 GitHub 发布 **Not Run**：按已批准的本地实施范围，根仓库不设置 remote、不 push、不发布；不影响本地使用。
+
+## 2026-11-16：按需分类入口补充验收
+
+本次新增通用分类入口模板和专用 Base 样板，同步规则、选择记录及模板 README。既有总览及其未提交的用户排序修改保留，不纳入本次提交；没有预建任何生活类别或修改现有知识库。
+
+- **Passed（静态及实际运行）**：新 Base YAML 可解析；实例化后的分类页属性、索引、嵌入和类别链接通过检查；根 AGENTS 仍低于 8000 字符。融合模板检查输出 0 errors、0 review items。
+- **Passed（实际 Obsidian 1.15.1）**：两个临时库各有同名类别和不同成员；A 的类别页嵌入及直接打开专用 Base 均只显示 `A-member` 这 1 条记录，A 的其他类别及 B 的成员均未混入。B 的笔记嵌入 A 的专用 Base 显示 0 条结果，确认上下文限制生效。
+- **首次样例断言 Failed，后续已处理**：初始脚本要求完全无提醒，实际检查器正确返回 `empty-overview`：`knowledge exists; review whether the initial overview should be populated`。样例只创建分类导航，没有生成领域综述；后续明确验证此预期提醒，未修改检查器或放宽产品校验。终端显示中文路径时出现乱码，改用仓库内 UTF-8 脚本保存和执行验收逻辑。
+- 本次无运行代码或依赖变更，复用原有回归结果，只补做模板结构及实际视图验证。临时库 `分类验收A`、`Category-QA-A`、`Category-QA-B` 和 `.cache/category-validation/` 验收后清理，没有仓库外清理项。
