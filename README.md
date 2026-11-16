@@ -40,6 +40,8 @@ uv run --no-sync python scripts/check_kb.py 'knowledge-base/示例知识库'
 
 ## 日常使用
 
+网页剪藏使用各库独立的 `Clippings/`，其他原始资料使用 `raw/`；二者都保留原件、不在摄入后移动。使用 Obsidian Web Clipper 时选择共享根 Vault，将保存位置设为 `knowledge-base/<库名>/Clippings`。浏览器扩展需单独配置，操作步骤见[融合模板的 Web Clipper 说明](knowledge-base-template/llm-wiki/README.md#使用-obsidian-web-clipper)。
+
 指定目标库后交给 Agent 摄入资料。指定单份先讨论；明确批量时逐份串行处理。资料保留原位，有新增内容才建摘要。普通查询只回答；“保存”生成持续维护的分析，“归档”保存历史快照。
 
 生成页用 `managed_by: agent` 标记，正文通过相对链接引用来源；`sources` 是从当前文件出发的相对路径列表。分类关系的双链写清从 Vault 根起的路径。全库属性类型共享，勿在不同库中把同名属性设成不同类型。

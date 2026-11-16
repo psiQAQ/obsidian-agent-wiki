@@ -74,7 +74,7 @@ def inspect(root: Path, vault: Path = REPO_ROOT) -> list[Finding]:
     def report(level, code, path, message):
         findings.append(Finding(level, code, path, message))
 
-    for key in (*DIRECTORIES, "notes"):
+    for key in (*DIRECTORIES, "notes", *(("clippings",) if "clippings" in kb.paths else ())):
         if not kb.paths[key].is_dir():
             report("error", "directory-missing", kb.paths[key], f"required {key} directory is missing")
     for key in SPECIAL_FILES:
@@ -83,7 +83,7 @@ def inspect(root: Path, vault: Path = REPO_ROOT) -> list[Finding]:
     all_files = list(files_under(kb.root))
     known = set(all_files)
     notes = {}
-    excluded = [kb.paths[key] for key in ("raw", "reports", "templates")]
+    excluded = [*kb.source_roots, kb.paths["reports"], kb.paths["templates"]]
     admin_files = {kb.root / name for name in ("README.md", "AGENTS.md", "LICENSES.md")}
     admin_files.update(kb.paths[key] for key in ("index", "log"))
     for path in all_files:
@@ -197,14 +197,14 @@ def inspect(root: Path, vault: Path = REPO_ROOT) -> list[Finding]:
         if not sources:
             report("error", "sources-missing", path, "generated knowledge requires evidence paths")
             continue
-        allowed = kb.paths["wiki"] if kind == "archive" else kb.paths["raw"]
+        allowed = (kb.paths["wiki"],) if kind == "archive" else kb.source_roots
         evidence = []
         for value in sources:
             if value.startswith("[[") or "\\" in value or Path(value).is_absolute() or urlsplit(value).scheme:
                 report("error", "source-path", path, "sources must contain literal relative file paths: " + value)
                 continue
             target = (path.parent / value).resolve()
-            if not within(target, allowed) or target == path:
+            if not any(within(target, directory) for directory in allowed) or target == path:
                 report("error", "source-scope", path, "source outside permitted evidence layer; not followed: " + value)
                 continue
             if not target.is_file():
@@ -272,12 +272,13 @@ def inspect(root: Path, vault: Path = REPO_ROOT) -> list[Finding]:
                 report("error", "log-raw-missing", log_path, "No material record requires a Raw Markdown link")
             for link in links:
                 target, _ = local_target(log_path, link)
-                if target is None or not within(target, kb.paths["raw"]) or not target.is_file():
-                    report("error", "log-raw-invalid", log_path, "No material Raw must resolve inside raw: " + link)
+                if target is None or not any(within(target, directory) for directory in kb.source_roots) or not target.is_file():
+                    report("error", "log-raw-invalid", log_path, "No material Raw must resolve inside a configured source directory: " + link)
                 else:
                     no_material.add(target)
     for path in all_files:
-        if within(path, kb.paths["raw"]) and path.name != ".gitkeep" and "assets" not in path.relative_to(kb.paths["raw"]).parts:
+        source_root = next((directory for directory in kb.source_roots if within(path, directory)), None)
+        if source_root is not None and path.name != ".gitkeep" and "assets" not in path.relative_to(source_root).parts:
             if path not in raw_references and path not in no_material:
                 report("review", "unprocessed-raw", path, "not referenced by compiled knowledge or a No material log entry")
 

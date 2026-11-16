@@ -78,6 +78,10 @@ class KnowledgeBase:
     root: Path
     paths: dict[str, Path]
 
+    @property
+    def source_roots(self) -> tuple[Path, ...]:
+        return tuple(self.paths[key] for key in ("raw", "clippings") if key in self.paths)
+
     @classmethod
     def load(cls, root: Path):
         root = root.resolve(strict=True)
@@ -89,15 +93,17 @@ class KnowledgeBase:
             raise ConfigError("kb.toml requires version = 1")
         values = config.get("paths", {})
         expected = set(DIRECTORIES + SPECIAL_FILES)
-        if not isinstance(values, dict) or set(values) != expected:
-            raise ConfigError(f"paths must contain exactly {', '.join(sorted(expected))}")
+        if not isinstance(values, dict) or set(values) not in (expected, expected | {"clippings"}):
+            raise ConfigError(f"paths requires {', '.join(sorted(expected))}; clippings is optional")
         paths = {name: relative_path(root, value) for name, value in values.items()}
         paths["notes"] = relative_path(root, "Notes")
         directories = [paths[name] for name in (*DIRECTORIES, "notes")]
+        if "clippings" in paths:
+            directories.append(paths["clippings"])
         for i, directory in enumerate(directories):
             for other in directories[i + 1:]:
                 if within(directory, other) or within(other, directory):
-                    raise ConfigError("raw/wiki/Notes/reports/templates directories must not overlap")
+                    raise ConfigError("configured directories, including Notes and clippings, must not overlap")
         for name in SPECIAL_FILES:
             if paths[name] == paths["wiki"] or not within(paths[name], paths["wiki"]) or paths[name].suffix != ".md":
                 raise ConfigError(f"{name} must be a Markdown file inside the wiki directory")

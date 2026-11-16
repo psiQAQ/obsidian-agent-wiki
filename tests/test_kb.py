@@ -262,6 +262,52 @@ class WikiCase(unittest.TestCase):
             self.assertEqual(check_main([str(self.root)]), 1)
             self.assertEqual(check_main([str(self.root / "missing")]), 2)
 
+    def test_clippings_are_immutable_sources_and_support_no_material(self):
+        clip = self.root / "Clippings" / "网页 文章.md"
+        put(clip, "---\nsource: https://example.org/article\nclipped: 2026-11-16\n---\n# 原文\n\n样本为 42K。\n")
+        before = clip.read_bytes()
+        self.assertIn("unprocessed-raw", self.codes())
+        self.assertNotIn("human-location", self.codes())
+        self.assertNotIn("human-properties", self.codes())
+        put(self.root / "wiki/log.md", "# 日志\n\n## [2026-11-16] ingest | 网页\n- Disposition: No material\n- Raw: [原文](../Clippings/" + quote(clip.name) + ")\n")
+        self.assertEqual(self.findings(), [])
+        note(self.root / "wiki/概念.md", "# 概念\n\n样本为 42K。", sources=["../Clippings/" + clip.name])
+        note(self.root / "wiki/overview.md", "# 综述\n\n样本为 42K。", type="overview", sources=["../Clippings/" + clip.name])
+        self.index()
+        self.assertEqual(self.findings(), [])
+        note(self.root / "wiki/概念.md", "# 概念\n\n日期为 2026-11-16，数量为 99K。", sources=["../Clippings/" + clip.name])
+        self.assertIn("evidence-candidate", self.codes())
+        self.assertEqual(clip.read_bytes(), before)
+
+    def test_optional_clippings_mapping_and_custom_directory(self):
+        config = self.root / "kb.toml"
+        original = config.read_text(encoding="utf-8")
+        put(config, original.replace('clippings = "Clippings"\n', ''))
+        (self.root / "Clippings/.gitkeep").unlink()
+        (self.root / "Clippings").rmdir()
+        self.assertEqual(self.findings(), [])
+        put(config, original.replace('clippings = "Clippings"', 'clippings = "网页剪藏"'))
+        self.assertIn("directory-missing", self.codes())
+        put(self.root / "网页剪藏/new.md", "# New\n")
+        self.assertIn("unprocessed-raw", self.codes())
+        self.assertNotIn("human-location", self.codes())
+
+    def test_clippings_mapping_rejects_escape_and_overlap(self):
+        path = self.root / "kb.toml"
+        original = path.read_text(encoding="utf-8")
+        for replacement in ("../other", "raw", "Notes", "wiki/clips"):
+            put(path, original.replace('clippings = "Clippings"', 'clippings = "' + replacement + '"'))
+            with self.subTest(replacement=replacement), self.assertRaises(ConfigError):
+                KnowledgeBase.load(self.root)
+
+    def test_clippings_cannot_supply_cross_library_evidence(self):
+        other = self.vault / "knowledge-base/B/Clippings/article.md"
+        put(other, "# 外库原文\n\n99K\n")
+        note(self.root / "wiki/概念.md", "# 概念\n\n99K", sources=["../../B/Clippings/article.md"])
+        self.assertIn("source-scope", self.codes())
+        put(self.root / "wiki/log.md", "# 日志\n\n## [2026-11-16] ingest | 网页\n- Disposition: No material\n- Raw: [外库](../../B/Clippings/article.md)\n")
+        self.assertIn("log-raw-invalid", self.codes())
+
 
 class LiteralBoundaryTests(unittest.TestCase):
     def test_candidates_do_not_match_larger_values(self):
