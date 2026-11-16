@@ -25,7 +25,7 @@
 
 - 共用根 `.obsidian/`，新知识库不复制另一套配置。共享 Templates 入口为 `knowledge-base-template/llm-wiki/templates`；Bases 为库内视图，未知上下文显示空结果。
 - 当前人工新建快捷键使用 Vault 根目录，不能假设会自动落入目标库 `Notes/`。指导用户从该文件夹新建笔记；明确归属后再整理错放内容。
-- Web Clipper 是独立浏览器扩展，它的模板与 Obsidian Templates 的 Markdown 模板不同，也不会由 `.obsidian/` 自动配置。Vault 字段填 Obsidian 中的 Vault 名称，保存位置填 Vault 内相对目录；本机示例及排错见[使用 Obsidian Web Clipper](knowledge-base-template/llm-wiki/README.md#使用-obsidian-web-clipper)。
+- Web Clipper 是独立浏览器扩展，它的模板与 Obsidian Templates 的 Markdown 模板不同，也不会由 `.obsidian/` 自动配置。Vault 字段填 Obsidian 中的 Vault 名称，保存位置填 Vault 内相对目录；本机示例及排错见[使用 Obsidian Web Clipper](knowledge-base-template/llm-wiki/README.md#使用%20Obsidian%20Web%20Clipper)。
 - 每库剪藏使用 `knowledge-base/<库名>/Clippings` 或该库实际映射；不存到公共模板或根目录共享 Clippings。剪藏后仍须明确发起摄入，原件不因处理完成而搬走。修改浏览器扩展设置或旧库映射须在当前任务范围内。
 - 配置、插件和主题的用户已有修改不混入任务提交；仅为文档验收打开页面，不顺手调整用户的主题或插件。
 
@@ -40,7 +40,7 @@ uv run --no-sync python scripts/init_kb.py '研究示例' --description '积累�
 uv run --no-sync python scripts/check_kb.py 'knowledge-base/研究示例'
 ```
 
-初始化拒绝覆盖已有目录，复制模板、填写 README 并执行 `git init`；不创建初始提交、不设置远端。也支持人工复制模板、替换 README 的库名与简介，再初始化本地 Git。知识库规则不依赖新占位符；新增模板文件时确认现有复制流程可以带入。
+初始化前确认公共模板只含模板文件；若 raw、Clippings 或 Notes 中夹带个人资料，先报告并请用户指定归属，不擅自删除，也不带入所有新库。初始化拒绝覆盖已有目录，复制模板、填写 README 并执行 `git init`；不创建初始提交、不设置远端。也支持人工复制模板、替换 README 的库名与简介，再初始化本地 Git。知识库规则不依赖新占位符；新增模板文件时确认现有复制流程可以带入。
 
 检查器只读，结果含义及语义复核要求见[检查与交付](knowledge-base-template/llm-wiki/AGENTS.md#检查与交付)。扫描件按当前会话可用的 `local-ocr` Skill 处理；不在本仓库安装 OCR 模型或将本机服务写成通用必需依赖。
 
