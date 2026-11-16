@@ -2,12 +2,14 @@
 
 from contextlib import redirect_stdout, redirect_stderr
 import io
+import os
 from pathlib import Path
 import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from urllib.parse import quote
 
 import yaml
@@ -19,6 +21,7 @@ from check_kb import inspect, main as check_main
 from evidence import candidates, contains
 from init_kb import initialize
 from kb_common import ConfigError, KnowledgeBase, read_note
+from markdown_links import parse_markdown
 
 
 def put(path, text):
@@ -187,7 +190,7 @@ class WikiCase(unittest.TestCase):
     def test_intentional_human_link_allowed_generated_link_rejected(self):
         self.populate()
         note(self.root / "Notes" / "想法.md", "# 想法\n\n[[尚未想清楚]]\n", type="note", managed_by="human", sources=[])
-        self.assertNotIn("broken-link", self.codes())
+        self.assertTrue(any(item.code == "broken-link" and item.level == "review" for item in self.findings()))
         with (self.root / "wiki" / "概念.md").open("a", encoding="utf-8") as stream:
             stream.write("\n[[尚未想清楚]]\n")
         self.assertIn("ambiguous-wikilink", self.codes())
@@ -309,7 +312,75 @@ class WikiCase(unittest.TestCase):
         self.assertIn("log-raw-invalid", self.codes())
 
 
+    def test_walk_read_error_is_runtime_failure(self):
+        blocked = self.root / "raw/unreadable"
+        put(blocked / "source.md", "# source\n")
+        real_scandir = os.scandir
+
+        def denied(path):
+            if Path(path).resolve() == blocked.resolve():
+                raise PermissionError(13, "synthetic permission denial", str(path))
+            return real_scandir(path)
+
+        error = io.StringIO()
+        with patch("kb_common.os.scandir", side_effect=denied), redirect_stderr(error):
+            self.assertEqual(check_main([str(self.root)]), 2)
+        self.assertIn("unreadable", error.getvalue())
+        self.assertIn("unprocessed-raw", self.codes())
+
+    def test_human_missing_links_are_review_and_short_links_grouped_per_page(self):
+        self.populate()
+        human = self.root / "Notes/human.md"
+        note(human, "[pending](./pending.md)\n[[pending]] [[概念]] [[概念]]\n"
+             "[[knowledge-base/中文 A/Notes/missing]]", type="note", managed_by="human", sources=[])
+        findings = [item for item in self.findings() if item.path == human]
+        self.assertTrue(all(item.level == "review" for item in findings))
+        self.assertEqual(sum(item.code == "broken-link" for item in findings), 3)
+        self.assertEqual(sum(item.code == "human-wikilink-scope" for item in findings), 1)
+
+    def test_reports_and_log_links_are_strict_without_article_metadata(self):
+        put(self.root / "reports/review.md", "[missing](../wiki/missing.md)\n")
+        put(self.root / "wiki/log.md", "# Log\n[report](../reports/missing.md)\n")
+        found = self.findings()
+        self.assertEqual(sum(item.code == "broken-link" and item.level == "error" for item in found), 2)
+        self.assertFalse(any(item.code in {"human-properties", "sources-missing"} for item in found))
+
+    def test_dot_title_exact_file_then_appended_md(self):
+        self.populate()
+        put(self.root / "raw/方法 v1.0.md", "# 原文\n")
+        target = self.root / "wiki/概念.md"
+        note(target, "[方法](../raw/方法%20v1.0)\n[[knowledge-base/中文 A/raw/方法 v1.0]]")
+        self.assertNotIn("broken-link", self.codes())
+        # An exact file takes priority over its Markdown namesake.
+        put(self.root / "raw/方法 v1.0", "exact")
+        note(target, "[方法](../raw/方法%20v1.0#not-a-heading)")
+        self.assertNotIn("broken-fragment", self.codes())
+
+    def test_reference_links_shared_across_index_log_reports_and_evidence(self):
+        self.populate()
+        note(self.root / "wiki/概念.md", "样本 [42K][ Data ]。\n\n[Data]: ../raw/原始%20资料.md\n")
+        put(self.root / "wiki/index.md", "| [概念][c] | 摘要 | 2026-11-16 |\n"
+            "| [综述][o] | 摘要 | 2026-11-16 |\n\n[c]: ./概念.md\n[o]: ./overview.md\n")
+        put(self.root / "raw/重复.md", "# 重复资料\n")
+        put(self.root / "wiki/log.md", "## [2026-11-16] ingest | 重复\n- Disposition: No material\n"
+            "- Raw: [重复][]\n\n[重复]: ../raw/重复.md\n")
+        put(self.root / "reports/review.md", "[概念][c]\n\n[c]: ../wiki/概念.md\n")
+        self.assertEqual(self.findings(), [])
+
+
 class LiteralBoundaryTests(unittest.TestCase):
+    def test_reference_labels_images_and_first_definition(self):
+        parsed = parse_markdown('[Text][ A  B ] ![Image][] [Straße][STRASSE]\n\n'
+                                '[a b]: <./first file.md> "title"\n[a B]: ./wrong.md\n'
+                                '[image]: ./image.png\n[straße]: ./unicode.md\n')
+        self.assertEqual([link.target for link in parsed.links], ["./first file.md", "./image.png", "./unicode.md"])
+        self.assertIn("Text Image Straße", parsed.visible())
+
+    def test_reference_paths_not_evidence_but_display_text_is(self):
+        body = '[42K][r] ![2026-11-17][img]\n\n[r]: https://example.org/99999 "3.14"\n[img]: ./88888.png\n'
+        self.assertEqual({item.value for item in candidates(body)}, {"42K", "2026-11-17"})
+        self.assertEqual(parse_markdown('```md\n[ghost]: ./missing.md\n```\n[display][ghost]').links, ())
+
     def test_candidates_do_not_match_larger_values(self):
         for body, source in (("42K", "142K"), ("3.14", "3.1415"), ("2026-11", "2026-11-16")):
             with self.subTest(body=body):

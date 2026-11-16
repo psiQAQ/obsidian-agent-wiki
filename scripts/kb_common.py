@@ -114,7 +114,10 @@ class KnowledgeBase:
 
 def files_under(root: Path):
     """Do not follow junctions or symbolic links into another knowledge base."""
-    for directory, names, files in os.walk(root, followlinks=False):
+    def walk_error(error):
+        raise error
+
+    for directory, names, files in os.walk(root, followlinks=False, onerror=walk_error):
         base = Path(directory)
         kept = []
         for name in sorted(names):

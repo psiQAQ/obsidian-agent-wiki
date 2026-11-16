@@ -7,13 +7,12 @@ Plain small integers, qualitative facts and paraphrases require semantic review.
 from dataclasses import dataclass
 import re
 
+from markdown_links import parse_markdown, prose
+
 
 NUMBER = re.compile(r"(?:\d{1,3}(?:,\d{3})+(?:\.\d+)*(?:\s*[KMB%](?![A-Za-z]))?|\d+(?:\.\d+)*(?:\s*[KMB%](?![A-Za-z]))?)(?![A-Za-z])")
 DATE = re.compile(r"\d{4}-\d{2}(?:-\d{2})?")
 QUOTES = [re.compile(r'"([^"\n]*)"'), re.compile(r"“([^”\n]*)”")]
-LINK = re.compile(r"!?\[([^\]]*)\]\([^)]*\)")
-WIKILINK = re.compile(r"!?\[\[([^\]]*)\]\]")
-FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
 
 
 @dataclass(frozen=True)
@@ -26,30 +25,8 @@ def normalize(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def prose(text: str) -> str:
-    lines = []
-    fence = None
-    for line in text.splitlines():
-        marker = FENCE.match(line)
-        if fence:
-            if marker and marker[1][0] == fence[0] and len(marker[1]) >= len(fence) and not marker[2].strip():
-                fence = None
-            continue
-        if marker and not (marker[1][0] == "`" and "`" in marker[2]):
-            fence = marker[1]
-            continue
-        lines.append(line)
-    return re.sub(r"<!--.*?-->", "", "\n".join(lines), flags=re.S)
-
-
-def visible(text: str) -> str:
-    text = re.sub(r"`[^`\n]*`", " ", text)
-    text = LINK.sub(r"\1", text)
-    return WIKILINK.sub(lambda m: m[1].split("|")[-1], text)
-
-
 def candidates(body: str) -> list[Candidate]:
-    text = visible(prose(body))
+    text = parse_markdown(body).visible()
     result = []
     for line in text.splitlines():
         spans = list(DATE.finditer(line))

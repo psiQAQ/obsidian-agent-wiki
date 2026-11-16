@@ -12,10 +12,9 @@ import yaml
 
 from evidence import candidates, contains, prose, source_body
 from kb_common import ConfigError, DIRECTORIES, KnowledgeBase, Note, REPO_ROOT, SPECIAL_FILES, files_under, read_note, within
+from markdown_links import WIKI_LINK, parse_markdown
 
 
-MD_LINK = re.compile(r"!?\[[^\]\n]*\]\(\s*(<[^>\n]*>|[^\s)]+)(?:\s+\"[^\"]*\")?\s*\)")
-WIKI_LINK = re.compile(r"!?\[\[([^\]\n]+)\]\]")
 KINDS = {"source", "entity", "concept", "analysis", "archive", "overview", "category"}
 ADMIN_TYPES = {"index", "log", "report", "document", "dashboard"}
 
@@ -41,17 +40,18 @@ def day(value):
     return None
 
 
-def md_targets(body):
-    text = re.sub(r"`[^`\n]*`", "", prose(body))
-    return [match[1].strip("<>") for match in MD_LINK.finditer(text)]
+def file_target(target, known):
+    # Titles may contain dots; append .md rather than replacing a suffix.
+    markdown = target.with_name(target.name + ".md")
+    return markdown if target not in known and markdown in known else target
 
 
-def local_target(path, link):
+def local_target(path, link, known):
     parsed = urlsplit(link)
     if parsed.scheme or parsed.netloc:
         return None, ""
     target = (path.parent / unquote(parsed.path)).resolve() if parsed.path else path.resolve()
-    return target, unquote(parsed.fragment)
+    return file_target(target, known), unquote(parsed.fragment)
 
 
 def has_fragment(path, fragment):
@@ -83,9 +83,10 @@ def inspect(root: Path, vault: Path = REPO_ROOT) -> list[Finding]:
     all_files = list(files_under(kb.root))
     known = set(all_files)
     notes = {}
-    excluded = [*kb.source_roots, kb.paths["reports"], kb.paths["templates"]]
+    excluded = [*kb.source_roots, kb.paths["templates"]]
     admin_files = {kb.root / name for name in ("README.md", "AGENTS.md", "LICENSES.md")}
-    admin_files.update(kb.paths[key] for key in ("index", "log"))
+    navigation_files = {kb.paths[key] for key in ("index", "log")}
+    navigation_files.update(path for path in all_files if within(path, kb.paths["reports"]))
     for path in all_files:
         if path.suffix.lower() != ".md" or any(within(path, directory) for directory in excluded):
             continue
@@ -102,7 +103,7 @@ def inspect(root: Path, vault: Path = REPO_ROOT) -> list[Finding]:
             continue
         if metadata.get("managed_by") not in (None, "agent", "human"):
             report("error", "managed-by", path, "managed_by must be agent or human")
-        if path in admin_files or metadata.get("type") in ADMIN_TYPES:
+        if path in admin_files or path in navigation_files or metadata.get("type") in ADMIN_TYPES:
             continue
         owned = metadata.get("managed_by") == "agent"
         kind = metadata.get("type")
@@ -138,48 +139,53 @@ def inspect(root: Path, vault: Path = REPO_ROOT) -> list[Finding]:
         if not within(target, kb.root):
             report("error" if owned else "review", "cross-kb-link", path, "target outside selected knowledge base; not followed: " + str(target))
         elif not target.is_file():
-            report("error", "broken-link", path, "missing target: " + str(target.relative_to(kb.root)))
+            report("error" if owned else "review", "broken-link", path, "missing target (human content may intentionally link to a pending page): " + str(target.relative_to(kb.root)))
         else:
             try:
                 if not has_fragment(target, fragment):
-                    report("error", "broken-fragment", path, f"missing heading/block: {fragment}")
+                    report("error" if owned else "review", "broken-fragment", path, f"missing heading/block: {fragment}")
             except (ValueError, UnicodeError, yaml.YAMLError) as error:
                 report("review", "fragment-unverified", path, str(error))
 
-    for path, note in notes.items():
+    parsed_notes = {path: parse_markdown(note.body) for path, note in notes.items() if path not in admin_files}
+    for path, parsed in parsed_notes.items():
+        note = notes[path]
         if path in admin_files:
             continue
-        owned = note.metadata.get("managed_by") == "agent"
-        for link in md_targets(note.body):
-            target, fragment = local_target(path, link)
+        owned = path in navigation_files or note.metadata.get("managed_by") == "agent"
+        for link in parsed.links:
+            target, fragment = local_target(path, link.target, known)
             if target is not None:
                 check_link(path, target, fragment, owned)
-        strings = [re.sub(r"`[^`\n]*`", "", prose(note.body))]
+        strings = [parsed.text]
         for value in note.metadata.values():
             strings.extend([value] if isinstance(value, str) else [item for item in value if isinstance(item, str)] if isinstance(value, list) else [])
+        short_links = set()
         for match in WIKI_LINK.finditer("\n".join(strings)):
             destination = match[1].split("|")[0].replace("\\", "").strip()
             name, _, fragment = destination.partition("#")
             if not name:
                 target = path
             elif "/" in name:
-                target = (vault / name).resolve()
-                if not target.suffix:
-                    target = target.with_suffix(".md")
+                target = file_target((vault / name).resolve(), known)
             else:
                 if owned:
                     report("error", "ambiguous-wikilink", path, "generated wikilink needs a full vault-relative path: " + name)
                     continue
-                matches = [candidate for candidate in known if candidate.name == name or candidate.name == name + ".md"]
+                short_links.add(name)
+                matches = [candidate for candidate in all_files if candidate.name == name]
                 if not matches:
-                    continue  # Intentional unresolved links are allowed in human notes.
+                    matches = [candidate for candidate in all_files if candidate.name == name + ".md"]
+                if not matches:
+                    report("review", "broken-link", path, "missing local wikilink target; may be a pending page: " + name)
+                    continue
                 if len(matches) != 1:
                     report("review", "ambiguous-wikilink", path, "multiple local matches: " + name)
                     continue
                 target = matches[0]
-            if not owned and within(target, kb.root) and not target.exists():
-                continue
             check_link(path, target, fragment, owned)
+        if short_links:
+            report("review", "human-wikilink-scope", path, "short wikilinks have unverified actual Vault resolution; checked only this library: " + ", ".join(sorted(short_links)))
 
     raw_references = set()
     for path, note in articles.items():
@@ -236,18 +242,18 @@ def inspect(root: Path, vault: Path = REPO_ROOT) -> list[Finding]:
     index_path = kb.paths["index"]
     if index_path in notes:
         indexed = {}
-        for line in prose(notes[index_path].body).splitlines():
-            for link in md_targets(line):
-                target, fragment = local_target(index_path, link)
-                if target is None:
-                    continue
-                check_link(index_path, target, fragment, True)
-                if not within(target, kb.paths["wiki"]):
-                    report("error", "index-scope", index_path, "index target is outside the wiki: " + link)
-                if target in indexed:
-                    report("error", "index-duplicate", index_path, "duplicate entry: " + link)
-                date_match = re.search(r"\|\s*(\d{4}-\d{2}-\d{2})\s*\|?\s*$", line)
-                indexed[target] = day(date_match[1]) if date_match else None
+        parsed = parsed_notes[index_path]
+        lines = parsed.text.splitlines()
+        for link in parsed.links:
+            target, _ = local_target(index_path, link.target, known)
+            if target is None:
+                continue
+            if not within(target, kb.paths["wiki"]):
+                report("error", "index-scope", index_path, "index target is outside the wiki: " + link.target)
+            if target in indexed:
+                report("error", "index-duplicate", index_path, "duplicate entry: " + link.target)
+            date_match = re.search(r"\|\s*(\d{4}-\d{2}-\d{2})\s*\|?\s*$", lines[link.line - 1])
+            indexed[target] = day(date_match[1]) if date_match else None
         for path, note in articles.items():
             if path == kb.paths["overview"] and note.metadata.get("status") == "empty":
                 continue
@@ -261,17 +267,20 @@ def inspect(root: Path, vault: Path = REPO_ROOT) -> list[Finding]:
     log_path = kb.paths["log"]
     no_material = set()
     if log_path in notes:
-        for record in re.split(r"(?=^## \[)", prose(notes[log_path].body), flags=re.M):
+        parsed = parsed_notes[log_path]
+        for match in re.finditer(r"^## \[.*?(?=^## \[|\Z)", parsed.text, re.M | re.S):
+            record = match[0]
             if not re.match(r"^## \[\d{4}-\d{2}-\d{2}\]\s+ingest\s*\|", record):
                 continue
             if not re.search(r"^- Disposition:\s*No material\s*$", record, re.M | re.I):
                 continue
-            raw_lines = re.findall(r"^- Raw:\s*(.+)$", record, re.M)
-            links = [link for line in raw_lines for link in md_targets(line)]
+            start_line = parsed.text.count("\n", 0, match.start()) + 1
+            raw_lines = {start_line + i for i, line in enumerate(record.splitlines()) if re.match(r"^- Raw:\s*", line)}
+            links = [link.target for link in parsed.links if link.line in raw_lines]
             if not links:
                 report("error", "log-raw-missing", log_path, "No material record requires a Raw Markdown link")
             for link in links:
-                target, _ = local_target(log_path, link)
+                target, _ = local_target(log_path, link, known)
                 if target is None or not any(within(target, directory) for directory in kb.source_roots) or not target.is_file():
                     report("error", "log-raw-invalid", log_path, "No material Raw must resolve inside a configured source directory: " + link)
                 else:
