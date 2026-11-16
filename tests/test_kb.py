@@ -103,7 +103,7 @@ class WikiCase(unittest.TestCase):
     def test_mapping_escape_and_overlap_are_rejected(self):
         path = self.root / "kb.toml"
         original = path.read_text(encoding="utf-8")
-        for replacement in ('"../other"', '"wiki"', '"wiki/raw"', '"."'):
+        for replacement in ('"../other"', '"wiki"', '"wiki/raw"', '"."', '"C:/outside"', '"C:outside"', '"//server/share"'):
             put(path, original.replace('raw = "raw"', 'raw = ' + replacement))
             with self.subTest(replacement=replacement), self.assertRaises(ConfigError):
                 KnowledgeBase.load(self.root)

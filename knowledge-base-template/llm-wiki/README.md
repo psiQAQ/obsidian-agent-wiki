@@ -98,23 +98,23 @@
 
 ### 区分 Vault 名称与保存路径
 
-以当前电脑的共享 Vault 和已有的 `knowledge-base-1` 文件夹为例：
+以显示名称为 `obsidian` 的共享 Vault 和 `研究示例` 知识库为例：
 
 | 字段或位置 | 应填写或对应的值 |
 | --- | --- |
-| Clipper 的 Vault 名称 | `obsidian` |
-| Vault 的磁盘根目录 | `D:\obsidian` |
-| Folder / Note location 保存位置示例 | `knowledge-base/knowledge-base-1/Clippings` |
-| 对应的磁盘目录 | `D:\obsidian\knowledge-base\knowledge-base-1\Clippings` |
+| Clipper 的 Vault 名称 | `obsidian`；替换为 Obsidian 实际显示的名称 |
+| Vault 的磁盘根目录 | 本仓库根目录，可位于任意磁盘位置 |
+| Folder / Note location 保存位置示例 | `knowledge-base/研究示例/Clippings` |
+| 从 Vault 根目录定位剪藏文件夹 | `./knowledge-base/研究示例/Clippings` |
 
-截至 2026-11-16 核对时，该 `knowledge-base-1/Clippings` 目录尚不存在；这里示范的是目标路径，不表示该旧库已经完成配置。本次手册更新不替旧库建目录或迁移资料。旧库启用剪藏时，还需按其实际布局建立目录并添加映射，见[分类入口与 Bases 末尾的目录调整说明](./AGENTS.md#分类入口与%20Bases)。
+本库日常保存位置应使用 `knowledge-base/{{kb_name}}/Clippings`，或本库约定的实际映射。Vault 字段不填磁盘绝对路径、`knowledge-base`、子库名或 `knowledge-base-template/llm-wiki`。换电脑或重命名 Vault 后，以 Obsidian 实际显示的名称为准。
 
-本库日常保存位置应使用 `knowledge-base/{{kb_name}}/Clippings`，或本库约定的实际映射。Vault 字段始终是 `obsidian`，不能填 `D:\obsidian`、`knowledge-base`、某个子库名或 `knowledge-base-template/llm-wiki`。换电脑或重命名 Vault 后，以 Obsidian 实际显示的名称为准。
+旧库尚无剪藏目录或映射时，先评估再按实际布局建立；本手册不代表已有库完成配置，也不授权自动迁移资料。目录调整见[分类入口与 Bases](./AGENTS.md#分类入口与%20Bases)。
 
 ### 保存网页并交给 Agent
 
-1. 打开 Web Clipper 设置，确认已添加名称为 `obsidian` 的 Vault。选择或复制一个剪藏模板，为目标知识库起清楚的模板名。
-2. 将该模板的保存目标选为 `obsidian`，Folder / Note location 填 `knowledge-base/{{kb_name}}/Clippings`。Note name 可使用 `{{title}}`。
+1. 打开 Web Clipper 设置，确认已添加实际使用的 Vault（本例为 `obsidian`）。选择或复制一个剪藏模板，为目标知识库起清楚的模板名。
+2. 将该模板的保存目标选为该 Vault，Folder / Note location 填 `knowledge-base/{{kb_name}}/Clippings`。Note name 可使用 `{{title}}`。
 3. Behavior 使用 **Create a new note**，正文保留网页内容。重名时使用区分名称，不覆盖或追加到已引用的旧原件。
 4. 保存前核对剪藏弹窗中的 Vault 和文件夹，以及网页正文、原始网址、作者、发布日期和剪藏日期。页面没有的信息不猜填。
 5. 保存后在本库 `Clippings/` 找到文件，打开确认正文是否完整，再发送下面的请求。
@@ -130,10 +130,10 @@
 
 按顺序核对：
 
-1. **设置里的名称**：必须与 Obsidian 的 Vault 名称完全一致；本机是 `obsidian`，不是磁盘路径。
-2. **剪藏弹窗里的选择**：当前选中的 Vault 是否仍是 `obsidian`。
+1. **设置里的名称**：必须与 Obsidian 的 Vault 名称完全一致；本例为 `obsidian`，不是磁盘路径。
+2. **剪藏弹窗里的选择**：当前选中的 Vault 是否仍是预期的 Vault。
 3. **当前模板的目标**：模板是否仍指定旧 Vault，是否误选了另一个库的剪藏模板。
-4. **保存路径**：Folder / Note location 是否为 Vault 内相对路径，用 `/` 分隔，不带 `D:\` 或开头斜杠。
+4. **保存路径**：Folder / Note location 是否为 Vault 内相对路径，用 `/` 分隔，不使用盘符或绝对路径。
 
 重新保存后，以目标目录中出现文件且内容可打开为成功标志。仍失败时，把 Vault、保存位置、所用模板名和错误原文交给 Agent 排查。先区分“找不到目标 Vault”和“网页内容没剪完整”，两者处理方法不同。
 
@@ -220,10 +220,10 @@
 
 预期得到具体的修复清单、改动页面和剩余问题。没有可靠依据、链接有多个可能目标或需要跨库处理时，应说明原因并等待必要决策，不猜测修复。
 
-如果只想运行结构检查，从共享仓库根目录 PowerShell 执行：
+如果只想运行结构检查，先按[根使用手册](../../README.md#环境)准备环境，再从共享仓库根目录的终端执行：
 
-```powershell
-uv run --no-sync python scripts/check_kb.py 'knowledge-base/{{kb_name}}'
+```shell
+uv run --no-sync python scripts/check_kb.py "knowledge-base/{{kb_name}}"
 ```
 
 检查器只读，不会替你修文件。退出码 `0` 为无检查发现，`1` 为有错误或待核实事项，`2` 为配置或运行失败。看到结果后阅读具体提示：未处理资料、PDF 未解析和疑似数值不匹配含义不同；通过也不代表所有事实均已核实。处理方法见[检查与交付](./AGENTS.md#检查与交付)。

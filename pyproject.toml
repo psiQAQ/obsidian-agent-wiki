@@ -5,6 +5,14 @@ description = "Local tools for independently versioned knowledge bases in a shar
 requires-python = ">=3.14,<3.15"
 dependencies = ["PyYAML==6.0.3"]
 
+[dependency-groups]
+dev = ["pytest>=9,<10"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+cache_dir = ".cache/pytest"
+addopts = "-ra --basetemp=.cache/pytest-tmp"
+
 [tool.uv]
 package = false
 cache-dir = ".cache/uv"

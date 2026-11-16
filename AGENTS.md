@@ -35,13 +35,13 @@
 
 ## 环境与共享工具
 
-共享脚本放在根 `scripts/`，复用根 uv Python 3.14 `.venv`。运行前检查现有环境；依赖安装、恢复、增删或锁文件变更须有明确授权，不能临时下载安装绕过。已装依赖的正常命令使用 `uv run --no-sync`；首次环境准备见[根使用手册](README.md#环境)。
+共享脚本放在根 `scripts/`，复用根 uv Python 3.14 `.venv`。运行前检查现有环境；依赖安装、恢复、增删或锁文件变更须有明确授权，不能临时下载安装绕过。已装依赖的正常命令使用 `uv run --no-sync`；首次环境准备在已安装 Python 3.14、uv 和 Git 的前提下运行 `python scripts/setup_env.py`，见[根使用手册](README.md#环境)。该脚本不下载解释器，按锁文件同步运行与开发依赖，缓存和临时目录留在仓库内。
 
-以下命令在仓库根目录的 PowerShell 中运行；示例库名与简介按任务替换。
+以下命令在仓库根目录的终端中运行；示例库名与简介按任务替换。命令应兼容 Windows、Ubuntu 和 macOS，优先相对路径和通用参数；复杂文件操作放入 Python 脚本并使用 `pathlib`，不依赖 PowerShell 或 GNU/BSD 特有选项。
 
-```powershell
-uv run --no-sync python scripts/init_kb.py '研究示例' --description '积累研究资料与个人思考。'
-uv run --no-sync python scripts/check_kb.py 'knowledge-base/研究示例'
+```shell
+uv run --no-sync python scripts/init_kb.py "研究示例" --description "积累研究资料与个人思考。"
+uv run --no-sync python scripts/check_kb.py "knowledge-base/研究示例"
 ```
 
 初始化前确认公共模板只含模板文件；若 raw、Clippings 或 Notes 中夹带个人资料，先报告并请用户指定归属，不擅自删除，也不带入所有新库。初始化拒绝覆盖已有目录，复制模板、填写 README 并执行 `git init`；不创建初始提交、不设置远端。也支持人工复制模板、替换 README 的库名与简介，再初始化本地 Git。知识库规则不依赖新占位符；新增模板文件时确认现有复制流程可以带入。
@@ -50,8 +50,8 @@ uv run --no-sync python scripts/check_kb.py 'knowledge-base/研究示例'
 
 缓存、测试与转换中间产物放在调用仓库内已确认忽略的 `.cache/`；复用必要结果，避免重复生成。测试仅使用隔离材料，不操作现有私有知识库。选择与改动直接相关的现有检查；确需完整回归时才运行：
 
-```powershell
-uv run --no-sync python -m unittest discover -s tests -v
+```shell
+uv run --no-sync python -m pytest
 ```
 
 ## 模板与上游维护
@@ -60,16 +60,16 @@ uv run --no-sync python -m unittest discover -s tests -v
 
 `knowledge-base-template/kepano-obsidian/` 是上游参考子模块，保留内容与许可，根仓库固定其提交。只有明确要求更新上游时才执行以下流程；不自动同步到融合模板或已有库。
 
-在根目录 PowerShell 中先检查本地改动和当前固定版本：
+在根目录终端中先检查本地改动和当前固定版本：
 
-```powershell
+```shell
 git -C knowledge-base-template/kepano-obsidian status --short
 git submodule status -- knowledge-base-template/kepano-obsidian
 ```
 
 子模块尚未检出时，在已获准恢复该参考仓库的范围内执行 `git submodule update --init -- knowledge-base-template/kepano-obsidian`。已有改动先判断归属，不强制切换或覆盖。确认检出干净后获取并审查上游差异：
 
-```powershell
+```shell
 git -C knowledge-base-template/kepano-obsidian fetch origin main
 git -C knowledge-base-template/kepano-obsidian log --oneline HEAD..origin/main
 git -C knowledge-base-template/kepano-obsidian diff --stat HEAD origin/main
@@ -77,10 +77,10 @@ git -C knowledge-base-template/kepano-obsidian diff --stat HEAD origin/main
 
 审查后在已授权更新范围内记录新的固定提交：
 
-```powershell
+```shell
 git -C knowledge-base-template/kepano-obsidian switch --detach origin/main
 git add -- knowledge-base-template/kepano-obsidian
-git commit -m 'chore: 更新 Steph 上游参考模板'
+git commit -m "chore: 更新 Steph 上游参考模板"
 ```
 
 其他检出使用 `git submodule update --init` 复现父仓库固定版本。吸收上游变化到融合模板属于单独的适配，不因更新 gitlink 自动发生。

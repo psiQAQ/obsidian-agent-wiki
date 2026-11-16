@@ -4,10 +4,26 @@
 
 第一次使用，按下面的“开始使用”完成一份资料的摄入。已经有知识库，可以直接打开该库的 README，或先看[知识库使用手册](knowledge-base-template/llm-wiki/README.md)中的任务示例。
 
+## 环境
+
+首次使用先安装 **Python 3.14、uv 和 Git**，在本仓库根目录打开终端，确认 `python --version` 显示 3.14，再运行：
+
+```shell
+python scripts/setup_env.py
+```
+
+Windows、Ubuntu 和 macOS 使用相同命令。若系统把 Python 3.14 命名为 `python3` 或 `python3.14`，仅将上面的 `python` 换成该命令；后续由 uv 选择项目解释器，无需激活虚拟环境。
+
+脚本按 `uv.lock` 创建或同步根 `.venv`，包含运行依赖和 pytest 开发依赖；缓存及临时文件放在 `.cache/`，不修改全局环境变量，也不下载 Python。输出“环境准备完成”即为成功。缺少工具、解释器版本不符或锁文件缺失时会明确失败；网络或依赖同步失败时保留错误信息，解决原因后再运行，不删除已有环境重试。
+
+日常运行使用 `uv run --no-sync python ...`，依赖变化后才重新准备环境。仅用 Obsidian 阅读和手写笔记不需要运行脚本，但本手册后续的命令示例均以环境已准备好为前提。
+
+除非另有说明，以下命令都在仓库根目录运行，路径相对此目录；带空格或中文的参数使用双引号。仓库可以放在任意磁盘位置，不要求固定盘符或用户名目录。
+
 ## 仓库结构
 
 ```text
-obsidian/                              # 整个 Obsidian Vault；本机位于 D:\obsidian
+obsidian/                              # 整个 Obsidian Vault；名称和磁盘位置可自定
 ├─ README.md                           # 整个仓库的使用入口
 ├─ AGENTS.md                           # Agent 的共享环境、授权与多库规则
 ├─ knowledge-base/                     # 真正使用的知识库；根 Git 不收录这里的内容
@@ -26,13 +42,13 @@ obsidian/                              # 整个 Obsidian Vault；本机位于 D:
 └─ .git/                               # 根仓库的本地版本历史
 ```
 
-一个 **Vault** 是 Obsidian 打开的整棵文件夹；一个 **知识库** 是其中 `knowledge-base/<库名>/` 下的内容。独立使用 Git 不会让子知识库自动变成另一个 Vault。当前 Vault 名称为 `obsidian`，磁盘位置是 `D:\obsidian`。
+一个 **Vault** 是 Obsidian 打开的整棵文件夹；一个 **知识库** 是其中 `knowledge-base/<库名>/` 下的内容。独立使用 Git 不会让子知识库自动变成另一个 Vault。本文以 Vault 名称 `obsidian` 为例；实际名称以 Obsidian 中显示的名称为准。
 
 ## 开始使用
 
 ### 打开共享 Vault
 
-在 Obsidian 的仓库管理界面选择“打开本地仓库”，选中 `D:\obsidian`。打开后应看到 `knowledge-base/` 和 `knowledge-base-template/`。如果已打开这个 Vault，无需再创建一个。
+在 Obsidian 的仓库管理界面选择“打开本地仓库”，选中本仓库根目录。打开后应看到 `knowledge-base/` 和 `knowledge-base-template/`。如果已打开这个 Vault，无需再创建一个。
 
 日常资料放在 `knowledge-base/<库名>/`。`knowledge-base-template/llm-wiki/` 用于创建新库；直接把剪藏或私人笔记放进模板，会让它们随初始化一起复制到以后创建的库。
 
@@ -48,15 +64,25 @@ obsidian/                              # 整个 Obsidian Vault；本机位于 D:
 
 创建成功后会得到 `knowledge-base/研究示例/`，其中包含 README、AGENTS、原始资料目录、人工笔记目录、知识索引和独立本地 Git。新库不会自动上传，也不会自动摄入已有资料。
 
-需要自己运行命令时，先完成[环境](#环境)准备，然后在根目录 PowerShell 执行：
+需要自己运行命令时，先完成[环境](#环境)准备，然后在根目录终端执行：
 
-```powershell
-Set-Location -LiteralPath 'D:\obsidian'
-uv run --no-sync python scripts/init_kb.py '研究示例' --description '积累研究资料与个人思考。'
-uv run --no-sync python scripts/check_kb.py 'knowledge-base/研究示例'
+```shell
+uv run --no-sync python scripts/init_kb.py "研究示例" --description "积累研究资料与个人思考。"
+uv run --no-sync python scripts/check_kb.py "knowledge-base/研究示例"
 ```
 
 初始化只接受新目录名，已有同名目录会被拒绝；换一个名字或直接使用已有库，不要覆盖。脚本会复制整个融合模板，因此运行前也须确认模板中没有个人资料。若环境缺失，按“环境”一节处理；已有库缺少配置时，请 Agent 先评估，不在原位置重复初始化。
+
+### 不用初始化脚本时
+
+也可以通过文件管理器复制模板：先确认 `knowledge-base-template/llm-wiki/` 没有个人资料，将其复制到尚不存在的 `knowledge-base/研究示例/`，不要覆盖已有目录。将新库 README 中的 `{{kb_name}}` 和 `{{description}}` 分别替换为库名和简介，然后在仓库根目录运行：
+
+```shell
+git -C "knowledge-base/研究示例" init --initial-branch=main
+uv run --no-sync python scripts/check_kb.py "knowledge-base/研究示例"
+```
+
+不要从其他已使用的知识库复制 `.git` 或 `.obsidian`。检查内容后可以请 Agent 在该库创建初始本地提交；初始化本身不创建提交。
 
 ### 放入第一份资料
 
@@ -95,46 +121,9 @@ uv run --no-sync python scripts/check_kb.py 'knowledge-base/研究示例'
 
 ## 网页剪藏的 Vault 与路径
 
-Web Clipper 的 **Vault 名称**填 `obsidian`；**Folder / Note location** 填 Vault 内相对目录，例如 `knowledge-base/研究示例/Clippings`。不要把 `D:\obsidian` 或子知识库名称填进 Vault 字段。
+Web Clipper 的 **Vault 名称**填 `obsidian`；**Folder / Note location** 填 Vault 内相对目录，例如 `knowledge-base/研究示例/Clippings`。Vault 字段应替换为实际 Vault 名称，不填磁盘绝对路径或子知识库名称。
 
-扩展需要单独配置，不会自动沿用本仓库的页面模板。完整设置、本机 `knowledge-base-1` 路径对照和 `vault not found` 排错，见[使用 Obsidian Web Clipper](knowledge-base-template/llm-wiki/README.md#使用%20Obsidian%20Web%20Clipper)。
-
-## 环境
-
-使用 Obsidian 阅读和手写笔记不需要 Python。运行本仓库的初始化与检查脚本，需要 Git、uv 和 Python 3.14；本机已建立的 `.venv` 可以直接复用，不必每次安装。
-
-以下仅用于首次准备或确需恢复环境，由操作者明确决定安装依赖后运行。PowerShell 的工作目录为本仓库根目录：
-
-```powershell
-Set-Location -LiteralPath 'D:\obsidian'
-$env:UV_CACHE_DIR = Join-Path (Get-Location) '.cache/uv'
-$env:TEMP = Join-Path (Get-Location) '.cache/tmp'
-$env:TMP = $env:TEMP
-New-Item -ItemType Directory -Force -Path $env:TEMP | Out-Null
-uv sync --locked --python 3.14 --no-python-downloads
-```
-
-环境变量只影响当前终端，缓存和临时文件留在仓库内。此命令不下载 Python；本机没有 Python 3.14 时会失败，需要先明确解决解释器安装。日常使用 `uv run --no-sync`；缺依赖时先处理环境，不靠重复重试或临时下载绕过。
-
-### 不用初始化脚本时
-
-也可以人工复制模板。先确认融合模板只含模板文件，下面命令拒绝已有同名目标。仍在根目录 PowerShell 中执行：
-
-```powershell
-$kbTarget = Join-Path (Get-Location) 'knowledge-base/研究示例'
-if (Test-Path -LiteralPath $kbTarget) { throw '目标目录已经存在，请换一个新名称。' }
-New-Item -ItemType Directory -Force -Path '.\knowledge-base' | Out-Null
-Copy-Item -LiteralPath '.\knowledge-base-template\llm-wiki' -Destination $kbTarget -Recurse
-```
-
-打开新库 README，将所有 `{{kb_name}}` 替换为实际库名、`{{description}}` 替换为简介，再运行：
-
-```powershell
-git -C $kbTarget init --initial-branch=main
-uv run --no-sync python scripts/check_kb.py 'knowledge-base/研究示例'
-```
-
-不要从其他已使用的知识库复制 `.git` 或 `.obsidian`。检查内容后可以请 Agent 在该库创建初始本地提交；初始化本身不创建提交。
+扩展需要单独配置，不会自动沿用本仓库的页面模板。完整设置、示例库的相对路径对照和 `vault not found` 排错，见[使用 Obsidian Web Clipper](knowledge-base-template/llm-wiki/README.md#使用%20Obsidian%20Web%20Clipper)。
 
 ## 恢复共享插件与主题
 
@@ -144,16 +133,14 @@ uv run --no-sync python scripts/check_kb.py 'knowledge-base/研究示例'
 
 ### 准备官方 CLI
 
-打开当前 Vault，在 Obsidian 设置中开启“命令行界面”并选择“添加到 PATH”（本机版本位于“关于”；新版界面可能位于“常规”），重新打开 PowerShell。使用官方随应用安装的 CLI，不安装同名第三方 npm 工具。命令及平台要求见 [Obsidian 官方 CLI 文档](https://obsidian.md/help/cli)。
+打开当前 Vault，在 Obsidian 设置中开启“命令行界面”并选择“添加到 PATH”（本机版本位于“关于”；新版界面可能位于“常规”），重新打开终端。使用官方随应用安装的 CLI，不安装同名第三方 npm 工具。命令及平台要求见 [Obsidian 官方 CLI 文档](https://obsidian.md/help/cli)。
 
-```powershell
-Set-Location -LiteralPath 'D:\obsidian'
-$obsidianCli = 'obsidian'
-& $obsidianCli help
-& $obsidianCli 'vault=obsidian' vault 'info=path'
+```shell
+obsidian help
+obsidian vault "info=path"
 ```
 
-确认返回目标路径。若找不到命令，检查 PATH 注册并重新打开终端；若无法连接，确认 Obsidian 已打开。Agent 的受限环境可能无法访问 CLI 或本地连接，应按实际权限错误处理，不反复安装软件。
+CLI 默认按当前工作目录定位 Vault；确认返回的是本仓库根目录。需要显式指定时，将 `vault="实际 Vault 名称"` 放在命令名之前。若找不到命令，检查 PATH 注册并重新打开终端；若无法连接，确认 Obsidian 已打开。Agent 的受限环境可能无法访问 CLI 或本地连接，应按实际权限错误处理，不反复安装软件。
 
 ### 安装缺失插件并保留配置
 
@@ -161,17 +148,17 @@ $obsidianCli = 'obsidian'
 
 批量恢复由 [restore_plugins.py](scripts/restore_plugins.py) 执行，复用前述 Python 环境，无需新增依赖。在仓库根目录先预览：
 
-```powershell
-uv run --no-sync python scripts/restore_plugins.py --vault obsidian --dry-run
+```shell
+uv run --no-sync python scripts/restore_plugins.py --dry-run
 ```
 
 确认待安装项后执行：
 
-```powershell
-uv run --no-sync python scripts/restore_plugins.py --vault obsidian
+```shell
+uv run --no-sync python scripts/restore_plugins.py
 ```
 
-脚本先读取启用清单并核对 CLI 的 Vault 路径，再逐项安装缺失插件。已有 `data.json` 暂存于内存，安装成功或失败都会恢复；核对配置字节后才启用，并检查插件是否报告已启用。不要在运行中关闭终端。若官方 CLI 不在 PATH，可用 `--cli '官方 CLI 的完整路径'` 指定；Windows 使用安装目录内的 `Obsidian.com`。
+脚本默认以仓库文件夹名称定位 Vault；实际显示名称不同时，用 `--vault "实际 Vault 名称"` 指定。脚本先读取启用清单并核对 CLI 的 Vault 路径，再逐项安装缺失插件。已有 `data.json` 暂存于内存，安装成功或失败都会恢复；核对配置字节后才启用，并检查插件是否报告已启用。不要在运行中关闭终端。若官方 CLI 不在 PATH，可用 `--cli "官方 CLI 的完整路径"` 指定；Windows 使用安装目录内的 `Obsidian.com`。
 
 成功时输出“恢复完成”；没有缺失插件时输出“没有缺失插件，无需安装”。安装或启用失败时脚本停止后续操作并返回非零退出码，保留终端中的错误输出，处理原因后再继续。CLI 返回退出码 0 时仍会检查错误文本和实际安装文件，不会自动删除配置重试。最后核对输出中的启用列表与预期清单，以及插件实际设置；启用状态写入磁盘可能稍有延迟。
 
@@ -181,17 +168,25 @@ uv run --no-sync python scripts/restore_plugins.py --vault obsidian
 
 `appearance.json` 当前选择 Minimal；主题不在插件启用清单内，需要单独安装：
 
-```powershell
-& $obsidianCli 'vault=obsidian' theme:install 'name=Minimal'
-& $obsidianCli 'vault=obsidian' theme:set 'name=Minimal'
-& $obsidianCli 'vault=obsidian' theme
+```shell
+obsidian theme:install "name=Minimal"
+obsidian theme:set "name=Minimal"
+obsidian theme
 ```
 
-确认当前主题为 Minimal，并检查其设置。Obuntu 与 VSCode 2026 是可选主题，仅在需要时分别运行 `theme:install 'name=Obuntu'` 或 `theme:install 'name=VSCode 2026'`；不要追加 `enable`，以免改变当前主题。
+确认当前主题为 Minimal，并检查其设置。Obuntu 与 VSCode 2026 是可选主题，仅在需要时分别运行 `obsidian theme:install "name=Obuntu"` 或 `obsidian theme:install "name=VSCode 2026"`；不要追加 `enable`，以免改变当前主题。
 
 当前官方 `plugin:install` 与 `theme:install` 没有版本参数，因此上述流程恢复可用的插件和主题，不保证版本与旧机器完全一致。迁移前若需要原版本回退，应另行保全已安装发行文件。
 
 ## 检查、维护与详细规则
+
+在仓库根目录运行脚本测试：
+
+```shell
+uv run --no-sync python -m pytest
+```
+
+测试只使用隔离材料；临时目录及 pytest 缓存留在 `.cache/`，不会读取私有知识库或安装真实 Obsidian 插件。
 
 | 想做的事 | 从哪里开始 |
 | --- | --- |

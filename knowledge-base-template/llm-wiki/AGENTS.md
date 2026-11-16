@@ -110,10 +110,10 @@
 
 ## 检查与交付
 
-从共享仓库根目录的 PowerShell 运行只读检查，路径替换为明确指定的库：
+完成共享环境准备后，从共享仓库根目录的终端 运行只读检查，路径替换为明确指定的库：
 
-```powershell
-uv run --no-sync python scripts/check_kb.py 'knowledge-base/研究示例'
+```shell
+uv run --no-sync python scripts/check_kb.py "knowledge-base/研究示例"
 ```
 
 退出码 `0` 表示无检查发现，`1` 表示有发现（含待核实），`2` 表示配置或运行失败。阅读具体 `[ERROR]` 与 `[REVIEW]` 内容，不把 `1` 一概当成事实错误，也不把 `0` 当成事实全部正确。

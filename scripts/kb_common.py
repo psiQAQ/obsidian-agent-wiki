@@ -1,7 +1,7 @@
 """Knowledge-base paths and YAML boundary parsing. No writes on import."""
 
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import os
 import tomllib
 
@@ -65,7 +65,7 @@ def relative_path(root: Path, value: str) -> Path:
     if not isinstance(value, str) or not value or "\\" in value:
         raise ConfigError("paths must be non-empty relative paths using forward slashes")
     path = Path(value)
-    if path.is_absolute() or path.drive or value.startswith("/") or any(x in {"..", ".git", ".obsidian", ".cache"} for x in path.parts):
+    if path.is_absolute() or PureWindowsPath(value).drive or value.startswith("/") or any(x in {"..", ".git", ".obsidian", ".cache"} for x in path.parts):
         raise ConfigError(f"unsafe path: {value!r}")
     resolved = (root / path).resolve()
     if resolved == root or not within(resolved, root):
