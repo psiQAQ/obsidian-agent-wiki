@@ -2,6 +2,7 @@
 
 from contextlib import redirect_stdout, redirect_stderr
 import io
+import json
 import os
 from pathlib import Path
 import shutil
@@ -19,7 +20,7 @@ REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "scripts"))
 from check_kb import inspect, main as check_main
 from evidence import candidates, contains
-from init_kb import initialize
+from init_kb import bind_overview, initialize
 from kb_common import ConfigError, KnowledgeBase, read_note
 from markdown_links import parse_markdown
 
@@ -46,6 +47,7 @@ class WikiCase(unittest.TestCase):
         self.template = self.vault / "knowledge-base-template" / "llm-wiki"
         shutil.copytree(REPO / "knowledge-base-template" / "llm-wiki", self.template)
         shutil.copytree(self.template, self.root)
+        bind_overview(KnowledgeBase.load(self.root), self.vault)
 
     def findings(self):
         return inspect(self.root, self.vault)
@@ -88,6 +90,62 @@ class WikiCase(unittest.TestCase):
         with self.assertRaises(FileExistsError):
             initialize(self.vault, "新建 中文 库", "different")
         self.assertEqual(original, (target / "README.md").read_bytes())
+        self.assertEqual(inspect(target, self.vault), [])
+        base = yaml.safe_load((target / "knowledge.base").read_text(encoding="utf-8"))
+        self.assertIn('this.file.path.startsWith("knowledge-base/新建 中文 库/")', base["filters"]["and"])
+
+    def test_manual_overview_binding_and_unfilled_instance(self):
+        base = self.root / "knowledge.base"
+        shutil.copyfile(self.template / "knowledge.base", base)
+        self.assertIn("base-binding-missing", self.codes())
+        text = base.read_text(encoding="utf-8")
+        for token, value in {"__KB_ROOT__": "knowledge-base/中文 A", "__WIKI_PATH__": "knowledge-base/中文 A/wiki", "__NOTES_PATH__": "knowledge-base/中文 A/Notes"}.items():
+            text = text.replace(token, value)
+        put(base, text)
+        self.assertEqual(self.findings(), [])
+
+    def test_binding_escapes_expression_and_yaml_quotes(self):
+        target = initialize(self.vault, "中文 O'Brien", "引用路径")
+        kb = KnowledgeBase.load(target)
+        # Exercise a quoted mapping without creating an OS-invalid Windows name.
+        kb.paths["wiki"] = target / '知识 "引号"'
+        shutil.copyfile(self.template / "knowledge.base", target / "knowledge.base")
+        bind_overview(kb, self.vault)
+        base = yaml.safe_load((target / "knowledge.base").read_text(encoding="utf-8"))
+        expected = json.dumps('knowledge-base/中文 O\'Brien/知识 "引号"', ensure_ascii=False)
+        self.assertIn(f"file.inFolder({expected})", base["views"][0]["filters"]["and"])
+
+    def test_all_six_page_templates_can_form_a_valid_library(self):
+        self.populate()
+        templates = sorted((self.root / "templates").glob("*.md"))
+        self.assertEqual(len(templates), 6)
+        for template in templates:
+            body = template.read_text(encoding="utf-8").replace("{{date:YYYY-MM-DD}}", "2026-11-16").replace("{{title}}", template.stem)
+            body = body.replace("__BASE_PATH__", "knowledge-base/中文 A/wiki/bases/分类.base")
+            destination = self.root / ("raw/原始 资料.md" if template.stem == "新来源模板" else "Notes/想法.md" if template.stem == "人工笔记模板" else "wiki/" + template.name)
+            put(destination, body)
+            original = read_note(destination)
+            data = dict(original.metadata)
+            if data.get("type") == "raw":
+                body += "\n样本数量为 42K。\n"
+            else:
+                if data.get("type") == "archive":
+                    data["sources"] = ["./概念.md"]
+                elif data.get("type") not in {"note", "category"}:
+                    data["sources"] = ["../raw/原始 资料.md"]
+                if data.get("type") != "category":
+                    data["categories"] = ["[[knowledge-base/中文 A/wiki/分类入口模板]]"]
+                body = "---\n" + yaml.safe_dump(data, allow_unicode=True, sort_keys=False) + "---\n" + original.body
+            put(destination, body)
+        category = (self.root / "templates/Bases/分类专用模板.base").read_text(encoding="utf-8")
+        for token, value in {"__KB_ROOT__": "knowledge-base/中文 A", "__WIKI_DIR__": "wiki", "__TEMPLATES_DIR__": "templates", "__CATEGORY_PATH__": "knowledge-base/中文 A/wiki/分类入口模板"}.items():
+            category = category.replace(token, value)
+        put(self.root / "wiki/bases/分类.base", category)
+        self.index()
+        self.assertEqual(self.findings(), [])
+        page = self.root / "wiki/知识页面模板.md"
+        put(page, page.read_text(encoding="utf-8").replace("categories:\n- '[[knowledge-base/中文 A/wiki/分类入口模板]]'", "categories:\n- [[knowledge-base/中文 A/wiki/分类入口模板]]"))
+        self.assertIn("property-type", self.codes())
 
     def test_init_rejects_escape_and_windows_special_names(self):
         for name in ("../outside", "a/b", "a\\b", "C:\\outside", "CON", "nul.txt", " name", "name.", ".git"):

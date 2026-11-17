@@ -1,13 +1,41 @@
 """Copy the local template and initialize a new independent Git repository."""
 
 import argparse
+import json
 from pathlib import Path
 import re
 import shutil
 import subprocess
 import sys
 
-from kb_common import ConfigError, KnowledgeBase, REPO_ROOT, files_under, within
+import yaml
+
+from kb_common import ConfigError, KnowledgeBase, REPO_ROOT, UniqueKeyLoader, files_under, within
+
+
+def bind_overview(kb: KnowledgeBase, vault: Path) -> None:
+    """Fill only the overview's reserved bindings, after parsing YAML quoting."""
+    path = kb.root / "knowledge.base"
+    bindings = {
+        "__KB_ROOT__": kb.root.relative_to(vault.resolve()).as_posix(),
+        "__WIKI_PATH__": kb.paths["wiki"].relative_to(vault.resolve()).as_posix(),
+        "__NOTES_PATH__": kb.paths["notes"].relative_to(vault.resolve()).as_posix(),
+    }
+    expression_values = {key: json.dumps(value, ensure_ascii=False)[1:-1] for key, value in bindings.items()}
+
+    def fill(value):
+        if isinstance(value, str):
+            return re.sub(r"__KB_ROOT__|__WIKI_PATH__|__NOTES_PATH__", lambda m: expression_values[m[0]], value)
+        if isinstance(value, list):
+            return [fill(item) for item in value]
+        if isinstance(value, dict):
+            return {key: fill(item) for key, item in value.items()}
+        return value
+
+    original = path.read_bytes()
+    data = yaml.load(original.decode("utf-8"), Loader=UniqueKeyLoader)
+    text = yaml.safe_dump(fill(data), allow_unicode=True, sort_keys=False, width=200)
+    path.write_text(text, encoding="utf-8", newline="\r\n" if b"\r\n" in original else "\n")
 
 
 def initialize(repo: Path, name: str, description: str) -> Path:
@@ -35,6 +63,7 @@ def initialize(repo: Path, name: str, description: str) -> Path:
     text = readme.read_text(encoding="utf-8")
     text = text.replace("{{kb_name}}", name).replace("{{description}}", description)
     readme.write_text(text, encoding="utf-8", newline="\n")
+    bind_overview(KnowledgeBase.load(destination), repo)
     result = subprocess.run([git, "init", "--initial-branch=main", str(destination)], capture_output=True, text=True, encoding="utf-8", errors="replace")
     if result.returncode:
         raise RuntimeError(f"Git initialization failed; newly copied files remain at {destination}: {result.stderr.strip()}")

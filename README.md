@@ -73,9 +73,11 @@ uv run --no-sync python scripts/check_kb.py "knowledge-base/研究示例"
 
 初始化只接受新目录名，已有同名目录会被拒绝；换一个名字或直接使用已有库，不要覆盖。脚本会复制整个融合模板，因此运行前也须确认模板中没有个人资料。若环境缺失，按“环境”一节处理；已有库缺少配置时，请 Agent 先评估，不在原位置重复初始化。
 
+脚本会按新库的 `kb.toml` 自动填写 `knowledge.base` 的库根、wiki 和 Notes 路径。总览固定绑定该库；“现行知识”和“按类别浏览”仅展示 wiki 内的生成知识，历史快照在“历史归档”视图中按归档日期倒序查看。
+
 ### 不用初始化脚本时
 
-也可以通过文件管理器复制模板：先确认 `knowledge-base-template/llm-wiki/` 没有个人资料，将其复制到尚不存在的 `knowledge-base/研究示例/`，不要覆盖已有目录。将新库 README 中的 `{{kb_name}}` 和 `{{description}}` 分别替换为库名和简介，然后在仓库根目录运行：
+也可以通过文件管理器复制模板：先确认 `knowledge-base-template/llm-wiki/` 没有个人资料，将其复制到尚不存在的 `knowledge-base/研究示例/`，不要覆盖已有目录。将新库 README 中的 `{{kb_name}}` 和 `{{description}}` 分别替换为库名和简介，再按[总览绑定步骤](knowledge-base-template/llm-wiki/AGENTS.md#分类入口与%20Bases)填写新库 `knowledge.base` 的三个占位符。默认布局分别为 `__KB_ROOT__` → `knowledge-base/研究示例`、`__WIKI_PATH__` → `knowledge-base/研究示例/wiki`、`__NOTES_PATH__` → `knowledge-base/研究示例/Notes`。然后在仓库根目录运行：
 
 ```shell
 git -C "knowledge-base/研究示例" init --initial-branch=main

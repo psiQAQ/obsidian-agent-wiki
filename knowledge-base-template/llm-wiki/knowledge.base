@@ -1,7 +1,8 @@
+# 初始化自动填写；人工复制须按 README 绑定。公共样板保持空结果。
 filters:
   and:
-    - 'this.file.path.startsWith("knowledge-base/")'
-    - 'file.path.startsWith(this.file.path.split("/").slice(0, 2).join("/") + "/")'
+    - 'this.file.path.startsWith("__KB_ROOT__/")'
+    - 'file.path.startsWith("__KB_ROOT__/")'
     - 'file.ext == "md"'
     - '!file.path.contains("/.git/")'
     - '!file.path.contains("/.cache/")'
@@ -16,14 +17,16 @@ properties:
     displayName: 来源路径
   note.managed_by:
     displayName: 维护者
+  note.archived:
+    displayName: 归档日期
 views:
   - type: table
-    name: 生成知识
+    name: 现行知识
     filters:
       and:
         - 'managed_by == "agent"'
-        - 'type == "source" || type == "entity" || type == "concept" || type == "analysis" || type == "archive" || type == "overview" || type == "category"'
-        - '!file.inFolder(this.file.path.split("/").slice(0, 2).join("/") + "/templates")'
+        - 'type == "source" || type == "entity" || type == "concept" || type == "analysis" || type == "overview" || type == "category"'
+        - 'file.inFolder("__WIKI_PATH__")'
     order:
       - file.name
       - type
@@ -37,7 +40,7 @@ views:
     name: 人工笔记
     filters:
       and:
-        - 'file.inFolder(this.file.path.split("/").slice(0, 2).join("/") + "/Notes")'
+        - 'file.inFolder("__NOTES_PATH__")'
     order:
       - file.name
       - categories
@@ -48,8 +51,8 @@ views:
     filters:
       and:
         - 'managed_by == "agent"'
-        - 'type == "source" || type == "entity" || type == "concept" || type == "analysis" || type == "archive" || type == "overview" || type == "category"'
-        - '!file.inFolder(this.file.path.split("/").slice(0, 2).join("/") + "/templates")'
+        - 'type == "source" || type == "entity" || type == "concept" || type == "analysis" || type == "overview" || type == "category"'
+        - 'file.inFolder("__WIKI_PATH__")'
     groupBy:
       property: categories
       direction: ASC
@@ -57,3 +60,17 @@ views:
       - file.name
       - type
       - categories
+  - type: table
+    name: 历史归档
+    filters:
+      and:
+        - 'file.inFolder("__WIKI_PATH__")'
+        - 'managed_by == "agent"'
+        - 'type == "archive"'
+    order:
+      - file.name
+      - archived
+      - sources
+    sort:
+      - property: archived
+        direction: DESC

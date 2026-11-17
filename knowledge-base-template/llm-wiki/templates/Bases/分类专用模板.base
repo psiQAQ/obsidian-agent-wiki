@@ -17,9 +17,14 @@ properties:
     displayName: 知识更新日期
   note.sources:
     displayName: 来源路径
+  note.archived:
+    displayName: 归档日期
 views:
   - type: table
     name: 分类内容
+    filters:
+      and:
+        - 'type != "archive"'
     order:
       - file.name
       - type
@@ -27,4 +32,16 @@ views:
       - sources
     sort:
       - property: updated
+        direction: DESC
+  - type: table
+    name: 历史归档
+    filters:
+      and:
+        - 'type == "archive"'
+    order:
+      - file.name
+      - archived
+      - sources
+    sort:
+      - property: archived
         direction: DESC
