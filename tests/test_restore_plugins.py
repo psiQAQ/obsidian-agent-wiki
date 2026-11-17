@@ -1,6 +1,6 @@
 """Plugin recovery checks with local fixtures; never install real plugins."""
 
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 import io
 import json
 from pathlib import Path
@@ -12,7 +12,7 @@ from unittest.mock import Mock, patch
 
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "scripts"))
-from restore_plugins import restore_plugins, run_cli
+from restore_plugins import main, resolve_cli, restore_plugins, run_cli
 
 
 class RestorePluginsCase(unittest.TestCase):
@@ -92,9 +92,10 @@ class RestorePluginsCase(unittest.TestCase):
         self.assertEqual(self.config.read_bytes(), self.original)
 
     def test_dry_run_does_not_call_cli_or_modify_files(self):
-        with patch("restore_plugins.run_cli") as call:
-            restore_plugins(self.root, "vault", "cli", dry_run=True)
+        with patch("restore_plugins.run_cli") as call, patch("restore_plugins.resolve_cli") as resolve:
+            restore_plugins(self.root, "vault", dry_run=True)
         call.assert_not_called()
+        resolve.assert_not_called()
         self.assertEqual(self.config.read_bytes(), self.original)
         self.assertFalse((self.plugin / "manifest.json").exists())
 
@@ -142,6 +143,107 @@ class RestorePluginsCase(unittest.TestCase):
         with patch("restore_plugins.run_cli", side_effect=self.fake_cli) as call:
             restore_plugins(self.root, "vault", "cli")
         self.assertTrue(any(c.args[3] == "plugin:install" for c in call.call_args_list))
+        self.assertEqual(self.config.read_bytes(), self.original)
+
+    def test_explicit_cli_takes_priority_on_every_platform(self):
+        for platform in ("win32", "darwin", "linux"):
+            with self.subTest(platform=platform), patch("restore_plugins.sys.platform", platform):
+                with patch("restore_plugins.shutil.which") as which:
+                    self.assertEqual(resolve_cli("custom CLI path"), "custom CLI path")
+                which.assert_not_called()
+
+    def test_non_windows_default_is_unchanged(self):
+        for platform in ("darwin", "linux"):
+            with self.subTest(platform=platform), patch("restore_plugins.sys.platform", platform):
+                with patch("restore_plugins.shutil.which") as which:
+                    self.assertEqual(resolve_cli(), "obsidian")
+                which.assert_not_called()
+
+    def test_windows_prefers_console_on_path(self):
+        console = self.root / "中文 installation path/Obsidian.com"
+        console.parent.mkdir()
+        console.write_bytes(b"")
+        with patch("restore_plugins.sys.platform", "win32"), patch(
+            "restore_plugins.shutil.which", return_value=str(console),
+        ) as which:
+            self.assertEqual(resolve_cli(), str(console))
+        which.assert_called_once_with("Obsidian.com")
+
+    def test_windows_finds_console_beside_executable(self):
+        console = self.root / "custom install/Obsidian.com"
+        console.parent.mkdir()
+        console.write_bytes(b"")
+        executable = console.with_suffix(".exe")
+        executable.write_bytes(b"")
+        with patch("restore_plugins.sys.platform", "win32"), patch.dict(
+            "restore_plugins.os.environ", {}, clear=True,
+        ), patch(
+            "restore_plugins.shutil.which",
+            side_effect=lambda name: str(executable) if name == "Obsidian.exe" else None,
+        ):
+            self.assertEqual(resolve_cli(), str(console))
+
+    def test_windows_finds_console_in_common_install_directories(self):
+        for variable, relative in (
+            ("LOCALAPPDATA", "Programs/Obsidian/Obsidian.com"),
+            ("ProgramFiles", "Obsidian/Obsidian.com"),
+            ("ProgramFiles(x86)", "Obsidian/Obsidian.com"),
+        ):
+            with self.subTest(variable=variable):
+                base = self.root / variable
+                console = base / relative
+                console.parent.mkdir(parents=True)
+                console.write_bytes(b"")
+                with patch("restore_plugins.sys.platform", "win32"), patch.dict(
+                    "restore_plugins.os.environ", {variable: str(base)}, clear=True,
+                ), patch("restore_plugins.shutil.which", return_value=None):
+                    self.assertEqual(resolve_cli(), str(console))
+
+    def test_windows_does_not_fall_back_to_gui_executable(self):
+        executable = self.root / "Obsidian.exe"
+        executable.write_bytes(b"")
+        with patch("restore_plugins.sys.platform", "win32"), patch.dict(
+            "restore_plugins.os.environ", {}, clear=True,
+        ), patch(
+            "restore_plugins.shutil.which",
+            side_effect=lambda name: str(executable) if name == "Obsidian.exe" else None,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "未找到 Obsidian.com"):
+                resolve_cli()
+
+    def test_automatic_cli_is_used_for_every_recovery_command(self):
+        with patch("restore_plugins.resolve_cli", return_value="selected console") as resolve:
+            with patch("restore_plugins.run_cli", side_effect=self.fake_cli) as call:
+                restore_plugins(self.root, "中文 Vault")
+        resolve.assert_called_once_with(None)
+        self.assertTrue(call.called)
+        self.assertTrue(all(c.args[0] == "selected console" for c in call.call_args_list))
+
+    def test_complete_plugins_skip_cli_lookup(self):
+        self.selection.write_text('["existing-plugin"]', encoding="utf-8")
+        with patch("restore_plugins.resolve_cli") as resolve, patch("restore_plugins.run_cli") as call:
+            restore_plugins(self.root, "vault")
+        resolve.assert_not_called()
+        call.assert_not_called()
+
+    def test_main_passes_default_or_explicit_cli(self):
+        for argv, expected in (([], None), (["--cli", "custom CLI path"], "custom CLI path")):
+            with self.subTest(argv=argv), patch("restore_plugins.REPO_ROOT", self.root):
+                with patch("restore_plugins.restore_plugins") as restore:
+                    self.assertEqual(main(argv), 0)
+                restore.assert_called_once_with(self.root, self.root.name, expected, False)
+
+    def test_main_reports_missing_windows_console_before_invoking_cli(self):
+        error = io.StringIO()
+        with patch("restore_plugins.REPO_ROOT", self.root), patch(
+            "restore_plugins.sys.platform", "win32",
+        ), patch.dict("restore_plugins.os.environ", {}, clear=True), patch(
+            "restore_plugins.shutil.which", return_value=None,
+        ), patch("restore_plugins.run_cli") as call, redirect_stderr(error):
+            self.assertEqual(main([]), 2)
+        call.assert_not_called()
+        self.assertIn("未找到 Obsidian.com", error.getvalue())
+        self.assertIn("--cli", error.getvalue())
         self.assertEqual(self.config.read_bytes(), self.original)
 
     def test_cli_zero_exit_error_is_failure_and_arguments_are_separate(self):

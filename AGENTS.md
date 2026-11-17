@@ -25,7 +25,7 @@
 
 - 共用根 `.obsidian/`，新知识库不复制另一套配置。共享 Templates 入口为 `knowledge-base-template/llm-wiki/templates`，更新会影响此后从该入口插入的页面，不自动改写旧页面。本库 `templates/` 副本供人工复制、Agent 创建和独立迁出参考，不是插件自动入口，也不自动与公共目录同步；单库定制不默认改公共模板。Bases 固定绑定所属库及目录映射，跨库或未知上下文显示空结果；现行知识与历史归档分视图，现行知识和按类别浏览隐藏 `status: empty` 的空综述，保留综述文件与 README 入口。
 - 当前人工新建快捷键使用 Vault 根目录，不能假设会自动落入目标库 `Notes/`。指导用户从该文件夹新建笔记；明确归属后再整理错放内容。
-- Web Clipper 是独立浏览器扩展，它的模板与 Obsidian Templates 的 Markdown 模板不同，也不会由 `.obsidian/` 自动配置。Vault 字段填 Obsidian 中的 Vault 名称，保存位置填 Vault 内相对目录；本机示例及排错见[使用 Obsidian Web Clipper](knowledge-base-template/llm-wiki/README.md#使用%20Obsidian%20Web%20Clipper)。
+- Web Clipper 是独立浏览器扩展，它的模板与 Obsidian Templates 的 Markdown 模板不同，也不会由 `.obsidian/` 自动配置。Vault 字段填 Obsidian 中的 Vault 名称，保存位置填 Vault 内相对目录；本机示例及排错见[使用 Obsidian Web Clipper](docs/Obsidian%20Web%20Clipper%20配置与正文抓取.md)。
 - 每库剪藏使用 `knowledge-base/<库名>/Clippings` 或该库实际映射；不存到公共模板或根目录共享 Clippings。剪藏后仍须明确发起摄入，原件不因处理完成而搬走。修改浏览器扩展设置或旧库映射须在当前任务范围内。
 - 配置、插件和主题的用户已有修改不混入任务提交；仅为文档验收打开页面，不顺手调整用户的主题或插件。
 - 插件本体及主题本体不纳入根 Git，包括随发行提供的 `manifest.json`；插件目录仅默认放行 `data.json`。每次提交前检查其中的敏感凭据、私人信息、服务地址、模板路径和素材库；发现私密内容时暂不提交该文件，提醒用户决定是否单独忽略，不擅自清空配置。Claudian 的 `.claudian/` 继续保持忽略。

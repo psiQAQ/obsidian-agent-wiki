@@ -1,9 +1,8 @@
-# 初始化自动填写；人工复制须按 README 绑定。公共样板保持空结果。
 filters:
   and:
-    - 'this.file.path.startsWith("__KB_ROOT__/")'
-    - 'file.path.startsWith("__KB_ROOT__/")'
-    - 'file.ext == "md"'
+    - this.file.path.startsWith("__KB_ROOT__/")
+    - file.path.startsWith("__KB_ROOT__/")
+    - file.ext == "md"
     - '!file.path.contains("/.git/")'
     - '!file.path.contains("/.cache/")'
 properties:
@@ -24,10 +23,10 @@ views:
     name: 现行知识
     filters:
       and:
-        - 'status != "empty"'
-        - 'managed_by == "agent"'
-        - 'type == "source" || type == "entity" || type == "concept" || type == "analysis" || type == "overview" || type == "category"'
-        - 'file.inFolder("__WIKI_PATH__")'
+        - status != "empty"
+        - managed_by == "agent"
+        - type == "source" || type == "entity" || type == "concept" || type == "analysis" || type == "overview" || type == "category"
+        - file.inFolder("__WIKI_PATH__")
     order:
       - file.name
       - type
@@ -41,7 +40,7 @@ views:
     name: 人工笔记
     filters:
       and:
-        - 'file.inFolder("__NOTES_PATH__")'
+        - file.inFolder("__NOTES_PATH__")
     order:
       - file.name
       - categories
@@ -51,10 +50,10 @@ views:
     name: 按类别浏览
     filters:
       and:
-        - 'status != "empty"'
-        - 'managed_by == "agent"'
-        - 'type == "source" || type == "entity" || type == "concept" || type == "analysis" || type == "overview" || type == "category"'
-        - 'file.inFolder("__WIKI_PATH__")'
+        - status != "empty"
+        - managed_by == "agent"
+        - type == "source" || type == "entity" || type == "concept" || type == "analysis" || type == "overview" || type == "category"
+        - file.inFolder("__WIKI_PATH__")
     groupBy:
       property: categories
       direction: ASC
@@ -66,9 +65,9 @@ views:
     name: 历史归档
     filters:
       and:
-        - 'file.inFolder("__WIKI_PATH__")'
-        - 'managed_by == "agent"'
-        - 'type == "archive"'
+        - file.inFolder("__WIKI_PATH__")
+        - managed_by == "agent"
+        - type == "archive"
     order:
       - file.name
       - archived

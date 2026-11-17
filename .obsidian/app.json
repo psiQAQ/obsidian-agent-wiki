@@ -7,5 +7,12 @@
   "tabSize": 4,
   "propertiesInDocument": "visible",
   "promptDelete": false,
-  "attachmentFolderPath": "./assets"
+  "attachmentFolderPath": "./assets",
+  "userIgnoreFilters": [
+    "docs/",
+    "knowledge-base-template/",
+    "AGENTS.md",
+    "README.md",
+    "THIRD_PARTY_NOTICES"
+  ]
 }

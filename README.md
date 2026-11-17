@@ -1,209 +1,227 @@
 # Obsidian 与 Agent 共享知识库
 
-在 Obsidian 中阅读、写笔记，把需要积累的资料交给 Agent 整理成有来源、能持续更新的知识页。不同研究方向分别放进独立知识库，共用一套 Obsidian 配置，各自保存本地 Git 历史。
+在 Obsidian 中阅读、写笔记，把需要积累的资料交给 Agent 整理成有来源、能持续更新的知识页。各研究方向分别放进独立知识库，共用一套 Obsidian 配置，各自保存本地 Git 历史。
 
 第一次使用，按下面的“开始使用”完成一份资料的摄入。已经有知识库，可以直接打开该库的 README，或先看[知识库使用手册](knowledge-base-template/llm-wiki/README.md)中的任务示例。
 
 ## 环境
 
-首次使用只需先安装 **uv 和 Git**，并确认 `uv --version`、`git --version` 可运行；无需手动安装 Python。在本仓库根目录打开终端，依次运行：
+首次使用先安装 **uv 和 Git**，在本仓库根目录打开终端，依次运行：
 
 ```shell
+# 确认 uv 和 Git 可用。
+uv --version
+git --version
+
+# 安装 Python 3.14。
 uv python install 3.14 --cache-dir .cache/uv
+
+# 创建或同步共享 Python 环境。
 uv run --no-project --python 3.14 --cache-dir .cache/uv python scripts/setup_env.py
 ```
 
-第一条命令由 uv 安装并管理 Python 3.14；第二条使用该版本启动准备脚本，按 `uv.lock` 创建或同步根 `.venv`，包含运行依赖和 pytest 开发依赖。`--no-project` 避免启动脚本前就自动同步项目依赖，由脚本统一设置环境后再同步。Windows、Ubuntu 和 macOS 使用相同命令，不依赖系统的 `python` 命令，也无需激活虚拟环境。
+> 本文命令均在仓库根目录运行，Windows、Ubuntu 和 macOS 使用相同命令；带空格或中文的参数使用双引号。uv 管理 Python 和根 `.venv`，缓存与临时文件放在 `.cache/`。
 
-Python 解释器保存在 uv 的托管安装目录，缓存及脚本运行时的临时文件放在仓库 `.cache/`；脚本不修改全局环境变量，由 uv 选择 Python 3.14，缺失时允许下载。输出“环境准备完成”即为成功。缺少 uv、Git 或锁文件时会明确失败；解释器下载、网络或依赖同步失败时保留错误信息，解决原因后重新执行上述命令，不删除已有环境重试。
-
-日常运行使用 `uv run --no-sync python ...`，依赖变化后才重新准备环境。仅用 Obsidian 阅读和手写笔记不需要运行脚本，但本手册后续的命令示例均以环境已准备好为前提。
-
-除非另有说明，以下命令都在仓库根目录运行，路径相对此目录；带空格或中文的参数使用双引号。仓库可以放在任意磁盘位置，不要求固定盘符或用户名目录。
+> 输出“环境准备完成”后即可运行后续命令。日常使用 `uv run --no-sync python ...`，依赖变化后重新准备环境；遇到下载或同步错误时，保留已有环境，按终端提示处理后重跑。
 
 ## 仓库结构
 
 ```text
 obsidian/                              # 整个 Obsidian Vault；名称和磁盘位置可自定
-├─ README.md                           # 整个仓库的使用入口
-├─ AGENTS.md                           # Agent 的共享环境、授权与多库规则
-├─ knowledge-base/                     # 真正使用的知识库；根 Git 不收录这里的内容
-│  └─ <库名>/                          # 一个独立方向，含自己的 README、资料和本地 Git
-├─ knowledge-base-template/             # 创建知识库时使用的模板与参考
-│  ├─ llm-wiki/                        # 本仓库维护的融合模板；不要在这里存个人资料
-│  └─ kepano-obsidian/                 # Steph Ango 上游参考子模块，保留其原有内容
 ├─ .obsidian/                          # 共享设置入库；插件和主题本体留在本机
 ├─ .agents/skills/                     # Agent 可读取的知识库与 Obsidian 操作技能
+├─ .git/                               # 根仓库的本地版本历史
+├─ .venv/                              # 共享 Python 环境，保留在本机
+├─ .cache/                             # 缓存和验证中间文件，保留在本机
+├─ README.md                           # 整个仓库的使用入口
+├─ AGENTS.md                           # Agent 的共享环境、授权与多库规则
+├─ knowledge-base/                     # 日常知识库，各库以独立本地 Git 保存内容
+│  └─ <库名>/                          # 一个独立方向，含自己的 README、资料和本地 Git
+├─ knowledge-base-template/             # 创建知识库时使用的模板与参考
+│  ├─ llm-wiki/                        # 创建知识库的公共融合模板
+│  └─ kepano-obsidian/                 # Steph Ango 上游参考子模块，保留其原有内容
+├─ pyproject.toml、uv.lock              # 共享 Python 工具的依赖声明与锁定版本
 ├─ scripts/                            # 知识库初始化、只读检查及插件恢复工具
 ├─ tests/                              # 工具的验证用例，使用隔离测试材料
-├─ docs/                               # 设计依据、来源材料和方案选择记录
-├─ pyproject.toml、uv.lock              # 共享 Python 工具的依赖声明与锁定版本
-├─ .venv/                              # 本机 Python 环境，环境准备后生成，不纳入 Git
-├─ .cache/                             # 本机缓存和验证中间文件，不纳入 Git
-└─ .git/                               # 根仓库的本地版本历史
+└─ docs/                               # 设计依据、来源材料和方案选择记录
 ```
 
-一个 **Vault** 是 Obsidian 打开的整棵文件夹；一个 **知识库** 是其中 `knowledge-base/<库名>/` 下的内容。独立使用 Git 不会让子知识库自动变成另一个 Vault。本文以 Vault 名称 `obsidian` 为例；实际名称以 Obsidian 中显示的名称为准。
+一个 **Vault** 是 Obsidian 打开的整棵文件夹，里面的知识库位于 `knowledge-base/<库名>/`，各自保存 Git 历史。本文以 Vault 名称 `obsidian` 为例，实际名称以 Obsidian 中显示的名称为准。
 
 ## 开始使用
 
 ### 打开共享 Vault
 
-在 Obsidian 的仓库管理界面选择“打开本地仓库”，选中本仓库根目录。打开后应看到 `knowledge-base-template/`；尚未创建知识库时，`knowledge-base/` 可能不存在。如果已打开这个 Vault，无需再创建一个。
+在 Obsidian 的仓库管理界面选择“打开本地仓库”，选中本仓库根目录。打开后可以看到 `knowledge-base-template/`，创建知识库后会出现 `knowledge-base/`。
 
-日常资料放在 `knowledge-base/<库名>/`。`knowledge-base-template/llm-wiki/` 用于创建新库；不要把剪藏或私人笔记放进模板。初始化会在复制前拒绝非骨架文件，并列出其相对路径；请先确认这些文件的归属，不删除原件来消除报错。路径检查不判断骨架文件正文是否含私人内容。
+> 日常资料放在 `knowledge-base/<库名>/`，公共模板保存在 `knowledge-base-template/llm-wiki/`。创建前确认模板文件及正文适合复制；初始化报错时，保全原件并核对所列文件的归属。
 
 ### 新建知识库
 
-初始化沿用 Windows 安全目录名校验；特殊字符库名在 Obsidian 中的实际链接兼容性尚未完整验证，名称校验通过不代表链接兼容性已验收。
-
-可以把这段话交给以本仓库为工作目录的 Agent，并替换库名和简介：
-
-```text
-请在 knowledge-base/ 下新建“研究示例”知识库，简介为“积累研究资料与个人思考”。
-使用融合模板，先确认模板内没有夹带个人资料，保留现有知识库。
-创建后检查结构，并给我 README 和知识索引的入口。
-```
-
-创建成功后会得到 `knowledge-base/研究示例/`，其中包含 README、AGENTS、原始资料目录、人工笔记目录、知识索引和独立本地 Git。新库不会自动上传，也不会自动摄入已有资料。
-
-需要自己运行命令时，先完成[环境](#环境)准备，然后在根目录终端执行：
+想要创建名为“xxx研究”、描述为“积累 xxx 研究资料与个人思考。”的知识库，运行：
 
 ```shell
-uv run --no-sync python scripts/init_kb.py "研究示例" --description "积累研究资料与个人思考。"
-uv run --no-sync python scripts/check_kb.py "knowledge-base/研究示例"
+# 创建得到 knowledge-base/xxx研究 文件夹并初始化独立本地 Git。
+uv run --no-sync python scripts/init_kb.py "xxx研究" --description "积累 xxx 研究资料与个人思考。"
+
+# 检查知识库结构。
+uv run --no-sync python scripts/check_kb.py "knowledge-base/xxx研究"
 ```
 
-初始化只接受新目录名，已有同名目录会被拒绝；换一个名字或直接使用已有库，不要覆盖。脚本会复制整个融合模板，因此运行前也须确认模板中没有个人资料。若环境缺失，按“环境”一节处理；已有库缺少配置时，请 Agent 先评估，不在原位置重复初始化。
+### 放入并整理资料
 
-脚本会按新库的 `kb.toml` 自动填写 `knowledge.base` 的库根、wiki 和 Notes 路径。总览固定绑定该库；“现行知识”和“按类别浏览”仅展示 wiki 内的生成知识，历史快照在“历史归档”视图中按归档日期倒序查看。
-
-### 不用初始化脚本时
-
-也可以通过文件管理器复制模板：先确认 `knowledge-base-template/llm-wiki/` 没有个人资料，将其复制到尚不存在的 `knowledge-base/研究示例/`，不要覆盖已有目录。将新库 README 中的 `{{kb_name}}` 和 `{{description}}` 分别替换为库名和简介，再按[总览绑定步骤](knowledge-base-template/llm-wiki/AGENTS.md#分类入口与%20Bases)填写新库 `knowledge.base` 的三个占位符。默认布局分别为 `__KB_ROOT__` → `knowledge-base/研究示例`、`__WIKI_PATH__` → `knowledge-base/研究示例/wiki`、`__NOTES_PATH__` → `knowledge-base/研究示例/Notes`。然后在仓库根目录运行：
-
-```shell
-git -C "knowledge-base/研究示例" init --initial-branch=main
-uv run --no-sync python scripts/check_kb.py "knowledge-base/研究示例"
-```
-
-不要从其他已使用的知识库复制 `.git` 或 `.obsidian`。检查内容后可以请 Agent 在该库创建初始本地提交；初始化本身不创建提交。
-
-### 放入第一份资料
-
-以新建的“研究示例”为例，把一份外部文章 `示例文章.md` 及其必要附件放入该库的 `raw/`，然后告诉 Agent：
+把 `示例文章.md` 及其附件放入 `knowledge-base/xxx研究/raw/`，然后告诉 Agent：
 
 ```text
-目标是 knowledge-base/研究示例。
-请阅读 raw/示例文章.md，先与我讨论主要内容、哪些部分值得写进知识库，
-以及已有知识中哪些页面可能需要更新。
+请阅读 knowledge-base/xxx研究/raw/示例文章.md，
+先讨论主要内容、值得积累的知识和需要更新的页面。
 ```
 
-讨论后，再说“按刚才讨论的范围摄入这份资料”。Agent 会保留原件，根据新增知识生成或更新 wiki 页面，并更新索引和操作日志。如果资料没有新增内容，只记录处理结果，不强行生成摘要。
+讨论后回复“按刚才讨论的范围摄入这份资料”。Agent 会保留原件，整理知识页，并更新索引和日志。
 
-用 PDF、扫描件、网页或自己的笔记开始时，参照[知识库手册的各类示例](knowledge-base-template/llm-wiki/README.md#按目的使用知识库)。单份资料先讨论；需要连续处理多份时，明确说“批量摄入”并指定范围。
+> PDF、扫描件、网页和个人笔记的操作见[知识库使用示例](knowledge-base-template/llm-wiki/README.md#按目的使用知识库)。连续处理多份资料时，指定范围并说明“批量摄入”。
 
 ### 查看结果并继续使用
 
-打开新库的 `wiki/index.md` 看页面摘要，打开 `wiki/overview.md` 看逐步形成的综述，打开 `knowledge.base` 按属性浏览。`wiki/log.md` 记录处理了哪些资料，批量处理和体检报告放在 `reports/`。
+在所属知识库 `xxx研究` 中查看：
 
-此后可以直接问“根据这个知识库，我对某个问题有哪些认识？”普通提问只回答；想留下可持续更新的内容时说“保存为分析页”，想保留当时答案时说“归档为历史快照”。阅读过程中仍可以随时打开来源核对。
+| 入口 | 可以看到什么 |
+| --- | --- |
+| `knowledge-base/xxx研究/wiki/index.md` | 知识目录、页面链接与摘要。 |
+| `knowledge-base/xxx研究/wiki/overview.md` | 逐步积累的知识综述。 |
+| `knowledge-base/xxx研究/wiki/log.md` | 资料摄入、保存和维护记录。 |
+| `knowledge-base/xxx研究/reports/` | 批量处理与体检报告。 |
+| `knowledge-base/xxx研究/knowledge.base` | 按属性浏览知识页与历史归档。 |
+
+向 Agent 提问可以获得带引用的回答。需要把回答留在库内时，可以选择：
+
+- **保存为分析页**：将回答整理成可持续维护的专题文章，放在 `wiki/`，例如 `wiki/研究方法比较.md`。正文引用原始资料，并按实际关联链接已有知识页；关联页可通过反向链接找到这份分析。后续摄入和体检时可继续完善它；要把本次结论合入已有分析页，明确指定“更新 `wiki/已有分析.md`”。
+- **归档为历史快照**：将当时的问题与回答保存为带日期的页面，放在 `wiki/`，例如 `wiki/研究方法比较 - YYYY-MM-DD.md`。记录归档日期，并链接当时使用的知识页。快照正文保留当时判断，所链接的知识页照常更新；维护时可提示快照可能过时。
+
+两种操作都会更新 `wiki/index.md` 和 `wiki/log.md`。新建页面使用独立文件名，已有页面保留；详细规则见[查询、保存与归档](knowledge-base-template/llm-wiki/AGENTS.md#查询、保存与归档)。
 
 ## 资料应该放在哪里
 
-下表中的路径均以一个知识库为起点，例如 `knowledge-base/研究示例/`。
+下表中的路径均相对于所属知识库，例如 `knowledge-base/xxx研究/`。
 
-| 你手里的内容 | 放置位置 | 接下来怎么做 |
+| 内容 | 放置位置 | 后续操作 |
 | --- | --- | --- |
-| 网页剪藏 | `Clippings/` | 保存后指定文件，让 Agent 摄入。 |
-| PDF、扫描件、图片、外部 Markdown 或文本 | `raw/` | 保留原件；需要时提取文字或识别，再编译知识。 |
-| 自己的想法、读书记录、复盘 | `Notes/` | 继续自由写作；明确要求摄入时才保存来源快照。 |
-| Agent 整理后的知识、分析和分类入口 | `wiki/` | 从索引或 Bases 阅读，让 Agent 按来源维护。 |
-| 图片等附件 | 所属资料或笔记旁的 `assets/` | 与所属知识库一起保留，避免放在 Vault 顶层。 |
-| 批量处理、体检结果 | `reports/` | 查看未解决事项，并从日志进入对应报告。 |
+| 网页剪藏 | `Clippings/` | 指定文件，请 Agent 摄入。 |
+| PDF、扫描件、图片、外部文章 | `raw/` | 保留原件，请 Agent 提取并整理知识。 |
+| 个人想法、读书记录、复盘 | `Notes/` | 自由写作，需要摄入时明确提出。 |
+| Agent 整理的知识与分析 | `wiki/` | 从索引或 Bases 阅读。 |
+| 附件 | 所属资料或笔记旁的 `assets/` | 随所属知识库保存。 |
+| 批量处理与体检报告 | `reports/` | 查看处理结果和待办。 |
 
-原始资料摄入后保留原位。各库可约定不同目录，实际位置以该库 README 和 `kb.toml` 为准；`Notes/` 统一保留。模板目录只放模板，不能充当个人收件箱。
+> 原始资料摄入后保留原位。实际目录以该库 README 和 `kb.toml` 为准，人工笔记统一放在 `Notes/`。
 
-## 网页剪藏的 Vault 与路径
+## 保存在线网页资料到本地
 
-Web Clipper 的 **Vault 名称**填 `obsidian`；**Folder / Note location** 填 Vault 内相对目录，例如 `knowledge-base/研究示例/Clippings`。Vault 字段应替换为实际 Vault 名称，不填磁盘绝对路径或子知识库名称。
-
-扩展需要单独配置，不会自动沿用本仓库的页面模板。完整设置、示例库的相对路径对照和 `vault not found` 排错，见[使用 Obsidian Web Clipper](knowledge-base-template/llm-wiki/README.md#使用%20Obsidian%20Web%20Clipper)。
+从[安装页面](https://obsidian.md/zh/clipper)安装 Obsidian Web Clipper，可将网页版文档、论坛帖子等保存为本地 Markdown；支持字幕提取的视频页面还可保存字幕。推荐配置和抓取练习见[Obsidian Web Clipper 配置与正文抓取](docs/Obsidian%20Web%20Clipper%20配置与正文抓取.md)。
 
 ## 恢复共享插件与主题
 
-根 Git 保存共享设置和经过审查的插件 `data.json`，忽略插件发行文件及主题本体。`manifest.json` 属于发行文件。新检出仓库需要另行安装插件和主题；已有机器上的本体仍留在磁盘。取消跟踪不改写 Git 历史，旧提交仍包含当时的发行文件。
+新检出仓库后，按以下步骤安装插件和主题。共享设置与经过审查的插件配置文件 `data.json` 由根 Git 保存，插件和主题本体保留在本地不上传 Git，从而减少插件和主题更新的影响。
 
-插件 `data.json` 可能包含凭据、服务地址、模板路径或素材库。提交前必须审查；发现私密内容时暂不提交，由用户决定是否为该插件添加忽略规则。Claudian 的模型配置位于已忽略的 `.claudian/claudian-settings.json`。当前保留的 Excalidraw 配置中服务密钥为空、内嵌素材库为空，模板与素材目录仍需在实际使用时自行准备。
+> 公开插件配置文件前审查凭据、服务地址、模板路径和素材库。私密配置保留在本地，由用户确认忽略规则。
 
-### 准备官方 CLI
+### 开启官方命令行界面功能
 
-打开当前 Vault，在 Obsidian 设置中开启“命令行界面”并选择“添加到 PATH”（本机版本位于“关于”；新版界面可能位于“常规”），重新打开终端。使用官方随应用安装的 CLI，不安装同名第三方 npm 工具。命令及平台要求见 [Obsidian 官方 CLI 文档](https://obsidian.md/help/cli)。
+为了让 Agent 能直接通过命令行操作 Obsidian，需要先开启官方命令行界面功能。
+
+仓库中的 [obsidian-cli](.agents/skills/obsidian-cli/SKILL.md) Skill 指导 Agent 读写和搜索笔记、查询属性与反向链接，以及管理插件和主题；[obsidian-markdown](.agents/skills/obsidian-markdown/SKILL.md) 和 [obsidian-bases](.agents/skills/obsidian-bases/SKILL.md) 分别提供笔记语法与总览配置规范，配合 CLI 完成内容维护。
+
+打开当前 Vault，在 Obsidian 设置 > 关于 > 高级 中开启“命令行界面”、选择“添加到 PATH”，然后重新打开终端。详见 [Obsidian 官方 CLI 文档](https://obsidian.md/help/cli)。
 
 ```shell
+# 查看官方 CLI 帮助。
 obsidian help
+
+# 确认返回当前仓库根目录。
 obsidian vault "info=path"
 ```
 
-CLI 默认按当前工作目录定位 Vault；确认返回的是本仓库根目录。需要显式指定时，将 `vault="实际 Vault 名称"` 放在命令名之前。若找不到命令，检查 PATH 注册并重新打开终端；若无法连接，确认 Obsidian 已打开。Agent 的受限环境可能无法访问 CLI 或本地连接，应按实际权限错误处理，不反复安装软件。
+> 连接异常时，确认 Obsidian 已打开，并检查 PATH 和访问权限。指定 Vault 时，将 `vault="实际 Vault 名称"` 放在命令名之前。
 
 ### 安装缺失插件并保留配置
 
-以下用于新检出仓库或恢复缺失、残缺插件，需操作者明确决定安装后运行。只有 `manifest.json` 和 `main.js` 都存在的插件才跳过；缺少任一项即纳入安装或补装，预览会列出缺失文件。此流程不升级完整插件，也不通过卸载或删除目录修复。`community-plugins.json` 只包含启用的插件；其他曾安装但未启用的插件需另行指定。
-
-批量恢复由 [restore_plugins.py](scripts/restore_plugins.py) 执行，复用前述 Python 环境，无需新增依赖。在仓库根目录先预览：
+恢复工具按 `community-plugins.json` 中的启用清单处理。先预览：
 
 ```shell
+# 预览缺失或残缺的插件。
 uv run --no-sync python scripts/restore_plugins.py --dry-run
 ```
 
-确认待安装项后执行：
+确认待安装项并决定安装后执行：
 
 ```shell
+# 安装或补装插件，保留已有配置并恢复启用状态。
 uv run --no-sync python scripts/restore_plugins.py
 ```
 
-脚本默认以仓库文件夹名称定位 Vault；实际显示名称不同时，用 `--vault "实际 Vault 名称"` 指定。脚本先读取启用清单并核对 CLI 的 Vault 路径，再逐项安装缺失插件。已有 `data.json` 暂存于内存，安装成功或失败都会恢复；核对配置字节后才启用，并检查插件是否报告已启用。不要在运行中关闭终端。若官方 CLI 不在 PATH，可用 `--cli "官方 CLI 的完整路径"` 指定；Windows 使用安装目录内的 `Obsidian.com`。
+> Windows 自动从 PATH 和常见安装目录查找 `Obsidian.com`；macOS、Linux 使用 PATH 中的 `obsidian`。指定官方 CLI 可追加 `--cli "完整路径"`，该参数优先于自动查找。
 
-成功时输出“恢复完成”；插件文件齐全时输出“插件文件齐全，无需安装或补装。”安装或启用失败时脚本停止后续操作并返回非零退出码，保留终端中的错误输出，处理原因后再继续。CLI 返回退出码 0 时仍会检查错误文本和实际安装文件，不会自动删除配置重试。最后核对输出中的启用列表与预期清单，以及插件实际设置；启用状态写入磁盘可能稍有延迟。
+> 指定 Vault 可追加 `--vault "实际 Vault 名称"`。保持终端运行至结束，再核对插件启用列表和设置；报错时保留输出，处理后重跑。
 
-重装已存在的插件时，先在已忽略的 `.cache/` 中保全原包、配置及启用清单并确认可读，再卸载；安装失败或设置不兼容时恢复这三项。**卸载不能当作保留配置的操作。** 本机 Minimal Settings `9.0.0` 的实测中，卸载删除了 `data.json`，重新安装后也未创建它；恢复原配置再启用后设置保持一致，详见[重装验证记录](docs/plugin-reinstall-verification.md)。
+> 安装脚本会自动备份已有的 `data.json`，并在插件安装或补装后自动恢复配置。详见[重装验证记录](docs/plugin-reinstall-verification.md)。
+
+### Claudian
+
+Claudian 提供 Obsidian 内的 Agent 对话入口，可结合笔记和选中文本进行问答、整理资料和维护笔记。
+
+运行 `restore_plugins.py` 完成插件安装后：
+
+1. 到 **设置 > 第三方插件 > Claudian > 供应商**，针对自己使用的 Agent 配置供应商及模型列表。
+2. 到 **设置 > 第三方插件 > Claudian > 通用 > 环境 > 共享环境**，按需填写 Agent 启动时使用的环境变量，例如 `HTTP_PROXY`、`HTTPS_PROXY` 和 `NO_PROXY`。
+
+> 本地配置保存在 Vault 根目录的 `.claudian/claudian-settings.json`；`.claudian/` 已被根 `.gitignore` 默认忽略，配置和会话保留在本机。
 
 ### 安装主题
 
-`appearance.json` 当前选择 Minimal；主题不在插件启用清单内，需要单独安装：
+可到 设置 > 外观 > 主题 > 管理 的社区主题面板中下载自己喜欢的主题。
+
+例如安装并启用当前配置使用的 Minimal 主题（可搭配 Minimal Theme Settings 插件进行更多配置调整）：
 
 ```shell
+# 安装并启用 Minimal 主题，按需替换命令中的主题名称。
 obsidian theme:install "name=Minimal"
 obsidian theme:set "name=Minimal"
+
+# 查看当前主题。
 obsidian theme
 ```
 
-确认当前主题为 Minimal，并检查其设置。Obuntu 与 VSCode 2026 是可选主题，仅在需要时分别运行 `obsidian theme:install "name=Obuntu"` 或 `obsidian theme:install "name=VSCode 2026"`；不要追加 `enable`，以免改变当前主题。
-
-当前官方 `plugin:install` 与 `theme:install` 没有版本参数，因此上述流程恢复可用的插件和主题，不保证版本与旧机器完全一致。迁移前若需要原版本回退，应另行保全已安装发行文件。
-
 ## 检查、维护与详细规则
 
-提交共享配置前，如需检查是否把笔记或附件误放在 Vault 顶层，运行：
+这一节是维护仓库和知识库时的自查与操作入口。用户可以确认哪些文件需要在提交前核对、修改工具后如何检查，以及整理知识库时该看哪份说明；Agent 则用这些检查验收改动，并按对应规则执行维护任务。
+
+### 提交共享文件前：检查文件归属
+
+根 Git 保存共享配置、工具和公共模板。下面的只读检查会列出公共路径白名单外的变更，帮助用户或 Agent 发现可能放错位置的文件，在提交前确认其用途和归属：
 
 ```shell
+# 检查根仓库的变更路径。
 uv run --no-sync python scripts/check_root.py
 ```
 
-它只检查 Git 可见的变更路径：既有公共目录和顶层骨架文件在固定白名单内，其他路径（包括未知目录和非 Markdown 文件）提示 `REVIEW`。提示只表示归属需要确认，不判定内容是否私密；新增公共路径须核对后维护白名单。白名单位于 `scripts/check_root.py`，不会因文件已被跟踪或暂存就自动放行。工具不读正文、不扫描被忽略的私有库、不移动或暂存文件；退出码 `0` 表示范围内无发现（不是隐私认证）、`1` 有发现、`2` 配置或运行失败。根级 assets 和 Clippings 已忽略，强制暂存后仍会提示；忽略不代表应该把私有资料保存在根目录。
+> 检查范围为 Git 可见的变更路径，白名单位于 `scripts/check_root.py`。白名单外的路径标记为 `REVIEW`，需人工确认归属；内容和隐私另行审查。退出码：`0` 检查范围内通过，`1` 有待确认项，`2` 配置或运行失败。
 
-`docs/LLM-review/` 用于本地评审材料，按本地忽略配置保存，不作为正式验收入口。可用 `git check-ignore docs/LLM-review/<报告名>.md` 核对实际忽略状态，不能假定报告已进入版本历史。正式验收记录放在 `docs/` 下可跟踪的位置。
+> 本地评审材料放在 `docs/LLM-review/`，保存前核对本地 Git 忽略配置；正式验收记录放在 `docs/` 下可跟踪的位置。
 
-在仓库根目录运行脚本测试：
+### 修改脚本后：检查功能是否受影响
+
+修改 `scripts/` 中的工具后，用自动化测试检查已有功能是否仍符合预期。Agent 应先选择与本次改动相关的测试；需要完整回归时，使用下面的命令运行全部测试：
 
 ```shell
+# 使用隔离材料运行测试，缓存保存在 .cache/。
 uv run --no-sync python -m pytest
 ```
 
-测试只使用隔离材料；临时目录及 pytest 缓存留在 `.cache/`，不会读取私有知识库或安装真实 Obsidian 插件。
+> [GitHub Actions](https://github.com/psiQAQ/obsidian-agent-wiki/actions/workflows/python-tests.yml) 在 Windows、Ubuntu 和 macOS 上执行环境准备、测试和脚本帮助检查。Obsidian 桌面界面与真实插件安装另行验收。
 
-[GitHub Actions](https://github.com/psiQAQ/obsidian-agent-wiki/actions/workflows/python-tests.yml) 在 Windows、Ubuntu、macOS 上由 uv 安装 Python 3.14，执行同一环境准备流程、pytest 和脚本帮助检查。push 或 PR 修改脚本、测试、依赖、融合模板、workflow、根 `.gitignore`、共享属性类型或 Templates 入口时触发，也支持手动运行；仅修改根使用文档不触发。各平台结果独立报告，CI 不验证 Obsidian 桌面界面或真实插件安装。
+### 整理或调整知识库时：查阅对应说明
+
+下表是按任务查阅的入口：用户可通过使用示例明确操作步骤，Agent 则按对应规则确认处理范围、保护原始资料并说明检查结果。
 
 | 想做的事 | 从哪里开始 |
 | --- | --- |
@@ -214,4 +232,6 @@ uv run --no-sync python -m pytest
 | 了解本地 Git 与公开范围 | [共享规则：Git 与公开边界](AGENTS.md#Git%20与公开边界) |
 | 查看方案为什么这样设计 | [方案选择记录](docs/karpathy-llm-wiki-skill-redesign-material/redesign-choice.md) |
 
-README 说明怎样使用；AGENTS 记录 Agent 必须遵守的步骤、字段和维护边界，用户也可以打开核对。Templates 命令面板使用公共目录，本库 `templates/` 副本供人工、Agent 创建页面及迁出参考；三种用法见[页面模板说明](knowledge-base-template/llm-wiki/README.md#页面模板的三种用法)。更新公共模板不会自动改写旧库文件，但共享 Templates 入口会影响以后插入的页面；共享检查器升级后也可能产生新增提示。旧库升级、改名或改映射，按[绑定与升级顺序](knowledge-base-template/llm-wiki/AGENTS.md#分类入口与%20Bases)逐项评估，不覆盖人工内容。更新上游参考不会自动合入融合模板；上游 Base 可能查询全 Vault，页面模板的 `type` 也须适配本仓库约定后再使用。独立 Vault 迁出仍需另行设计工具入口与路径，不在本轮升级范围内。
+README 提供使用步骤，AGENTS 记录 Agent 的操作规则。
+
+> 页面模板用法见[页面模板说明](knowledge-base-template/llm-wiki/README.md#页面模板的三种用法)。已有库升级、改名或调整目录，按[绑定与升级顺序](knowledge-base-template/llm-wiki/AGENTS.md#分类入口与%20Bases)评估，并保全人工内容；上游参考适配与独立 Vault 迁出另行规划。

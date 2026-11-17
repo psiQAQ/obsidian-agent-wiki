@@ -2,14 +2,47 @@
 
 import argparse
 import json
+import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 REQUIRED_FILES = ("manifest.json", "main.js")
+
+
+def resolve_cli(cli: str | None = None) -> str:
+    """显式参数优先；Windows 自动选择可读取输出的控制台入口。"""
+    if cli is not None:
+        return cli
+    if sys.platform != "win32":
+        return "obsidian"
+
+    console = shutil.which("Obsidian.com")
+    if console:
+        return str(Path(console).resolve())
+
+    candidates = []
+    executable = shutil.which("Obsidian.exe")
+    if executable:
+        candidates.append(Path(executable).with_suffix(".com"))
+    for variable, relative in (
+        ("LOCALAPPDATA", Path("Programs/Obsidian/Obsidian.com")),
+        ("ProgramFiles", Path("Obsidian/Obsidian.com")),
+        ("ProgramFiles(x86)", Path("Obsidian/Obsidian.com")),
+    ):
+        if directory := os.environ.get(variable):
+            candidates.append(Path(directory) / relative)
+    for candidate in candidates:
+        if candidate.is_file():
+            return str(candidate.resolve())
+    raise RuntimeError(
+        "未找到 Obsidian.com；请开启 Obsidian 命令行界面并添加到 PATH，"
+        "或使用 --cli 指定安装目录中的 Obsidian.com 完整路径。"
+    )
 
 
 def missing_files(directory: Path) -> list[str]:
@@ -33,7 +66,9 @@ def run_cli(cli: str, vault: str, root: Path, *args: str) -> str:
     return output
 
 
-def restore_plugins(root: Path, vault: str, cli: str, dry_run: bool = False) -> None:
+def restore_plugins(
+    root: Path, vault: str, cli: str | None = None, dry_run: bool = False,
+) -> None:
     root = root.resolve()
     plugin_ids = json.loads((root / ".obsidian/community-plugins.json").read_bytes())
     if not isinstance(plugin_ids, list) or any(
@@ -60,6 +95,7 @@ def restore_plugins(root: Path, vault: str, cli: str, dry_run: bool = False) -> 
         print("插件文件齐全，无需安装或补装。")
         return
 
+    cli = resolve_cli(cli)
     target = run_cli(cli, vault, root, "vault", "info=path")
     if Path(target).resolve() != root:
         raise RuntimeError("CLI 返回的 Vault 路径与本仓库不符；未安装插件。")
@@ -89,7 +125,7 @@ def restore_plugins(root: Path, vault: str, cli: str, dry_run: bool = False) -> 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--vault", default=REPO_ROOT.name, help="Obsidian 中的 Vault 名称")
-    parser.add_argument("--cli", default="obsidian", help="官方 CLI 命令或可执行文件路径")
+    parser.add_argument("--cli", help="官方 CLI 命令或可执行文件路径；默认按系统自动选择")
     parser.add_argument("--dry-run", action="store_true", help="只列出待安装或补装项及缺失文件，不调用 CLI")
     args = parser.parse_args(argv)
     try:
