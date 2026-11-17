@@ -169,6 +169,27 @@ class WikiCase(unittest.TestCase):
         self.assertNotIn("invalid-base", self.codes())
         self.assertNotIn("base-binding-missing", self.codes())
 
+    def test_unmapped_clippings_are_reported_once_without_reclassifying_sources(self):
+        config = self.root / "kb.toml"
+        put(config, config.read_text(encoding="utf-8").replace('clippings = "Clippings"\n', ''))
+        self.assertEqual(self.findings(), [])  # An unused placeholder is compatible.
+        files = {"Clippings/one.md": "---\nbad: [\n---\noriginal", "Clippings/two.md": "# Original", "Clippings/bad.base": "filters: ["}
+        for name, content in files.items():
+            put(self.root / name, content)
+        findings = self.findings()
+        self.assertEqual([(item.level, item.code, item.path) for item in findings], [("review", "clippings-unmapped", self.root / "Clippings")])
+        self.assertEqual(files, {name: (self.root / name).read_text(encoding="utf-8") for name in files})
+        note(self.root / "wiki/概念.md", "# 知识", sources=["../Clippings/two.md"])
+        self.index()
+        self.assertIn("source-scope", self.codes())
+
+    def test_clippings_used_by_another_mapping_are_not_inferred_as_sources(self):
+        config = self.root / "kb.toml"
+        text = config.read_text(encoding="utf-8").replace('clippings = "Clippings"\n', '').replace('reports = "reports"', 'reports = "Clippings/reports"')
+        put(config, text)
+        put(self.root / "Clippings/reports/result.md", "# Report\n")
+        self.assertEqual(self.findings(), [])
+
     def test_all_six_page_templates_can_form_a_valid_library(self):
         self.populate()
         templates = sorted((self.root / "templates").glob("*.md"))

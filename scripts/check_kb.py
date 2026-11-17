@@ -131,8 +131,15 @@ def inspect(root: Path, vault: Path = REPO_ROOT) -> list[Finding]:
             report("error", "special-file-missing", kb.paths[key], f"required {key} file is missing")
     all_files = list(files_under(kb.root))
     known = set(all_files)
+    protected_sources = list(kb.source_roots)
+    unmapped_clippings = kb.root / "Clippings"
+    mapped_directories = [kb.paths[key] for key in (*DIRECTORIES, "notes")]
+    if "clippings" not in kb.paths and not any(within(unmapped_clippings, directory) or within(directory, unmapped_clippings) for directory in mapped_directories):
+        if any(within(path, unmapped_clippings) and path.name != ".gitkeep" for path in all_files):
+            report("review", "clippings-unmapped", unmapped_clippings, "files exist without paths.clippings; confirm the mapping before ingestion; files were not classified as human notes or accepted as sources")
+            protected_sources.append(unmapped_clippings)
     for path in all_files:
-        if path.suffix.lower() != ".base" or any(within(path, directory) for directory in kb.source_roots):
+        if path.suffix.lower() != ".base" or any(within(path, directory) for directory in protected_sources):
             continue
         try:
             text = path.read_text(encoding="utf-8-sig")
@@ -145,7 +152,7 @@ def inspect(root: Path, vault: Path = REPO_ROOT) -> list[Finding]:
             if placeholders:
                 report("error", "base-binding-missing", path, "fill Base bindings before use: " + ", ".join(placeholders))
     notes = {}
-    excluded = [*kb.source_roots, kb.paths["templates"]]
+    excluded = [*protected_sources, kb.paths["templates"]]
     admin_files = {kb.root / name for name in ("README.md", "AGENTS.md", "LICENSES.md")}
     navigation_files = {kb.paths[key] for key in ("index", "log")}
     navigation_files.update(path for path in all_files if within(path, kb.paths["reports"]))
