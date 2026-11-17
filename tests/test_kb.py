@@ -148,6 +148,27 @@ class WikiCase(unittest.TestCase):
         expected = json.dumps('knowledge-base/中文 O\'Brien/知识 "引号"', ensure_ascii=False)
         self.assertIn(f"file.inFolder({expected})", base["views"][0]["filters"]["and"])
 
+    def test_base_yaml_and_outer_shapes_are_checked(self):
+        target = self.root / "wiki/bases/check.base"
+        for content in ("filters: [", "- item\n", "scalar\n", "views: {}\n", "views: [1]\n",
+                        "filters: []\n", "views:\n  - filters: 1\n", "filters: x\nfilters: y\n"):
+            with self.subTest(content=content):
+                put(target, content)
+                self.assertTrue(any(item.code == "invalid-base" and item.level == "error" for item in self.findings()))
+        put(target, 'filters: file.hasTag("example")\nviews:\n  - type: plugin-view\n    filters:\n      and:\n        - file.ext == "md"\n    plugin_settings: [1, 2]\n')
+        self.assertEqual(self.findings(), [])
+        put(target, "")
+        self.assertEqual(self.findings(), [])
+
+    def test_base_samples_are_parsed_but_sources_are_not(self):
+        put(self.root / "templates/broken.base", "filters: [")
+        self.assertIn("invalid-base", self.codes())
+        (self.root / "templates/broken.base").unlink()
+        for name in ("raw/original.base", "Clippings/original.base"):
+            put(self.root / name, "filters: [ __KB_ROOT__")
+        self.assertNotIn("invalid-base", self.codes())
+        self.assertNotIn("base-binding-missing", self.codes())
+
     def test_all_six_page_templates_can_form_a_valid_library(self):
         self.populate()
         templates = sorted((self.root / "templates").glob("*.md"))

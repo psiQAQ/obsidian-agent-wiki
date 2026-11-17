@@ -11,7 +11,7 @@ from urllib.parse import unquote, urlsplit
 import yaml
 
 from evidence import candidates, contains, prose, source_body
-from kb_common import ConfigError, DIRECTORIES, KnowledgeBase, Note, REPO_ROOT, SPECIAL_FILES, files_under, read_note, within
+from kb_common import ConfigError, DIRECTORIES, KnowledgeBase, Note, REPO_ROOT, SPECIAL_FILES, UniqueKeyLoader, files_under, read_note, within
 from markdown_links import WIKI_LINK, parse_markdown
 
 
@@ -67,6 +67,21 @@ def has_fragment(path, fragment):
     return any(requested in {heading.casefold(), re.sub(r"[^\w\- ]", "", heading.casefold()).replace(" ", "-")} for heading in headings)
 
 
+def validate_base(text):
+    """Check YAML and outer containers, not expressions or plugin settings."""
+    data = yaml.load(text, Loader=UniqueKeyLoader)
+    if data is None:
+        return  # An empty Base is valid while being created.
+    if not isinstance(data, dict):
+        raise ValueError("Base must be a mapping or an empty document")
+    views = data.get("views", [])
+    if not isinstance(views, list) or any(not isinstance(view, dict) for view in views):
+        raise ValueError("Base views must be a list of mappings")
+    for scope in (data, *views):
+        if "filters" in scope and not isinstance(scope["filters"], (str, dict)):
+            raise ValueError("Base filters must be a string or a mapping")
+
+
 def inspect_snapshots(kb, snapshots, report):
     """Compare metadata only; never refresh snapshots or read the original body."""
     grouped = {}
@@ -116,12 +131,19 @@ def inspect(root: Path, vault: Path = REPO_ROOT) -> list[Finding]:
             report("error", "special-file-missing", kb.paths[key], f"required {key} file is missing")
     all_files = list(files_under(kb.root))
     known = set(all_files)
-    if kb.root != (vault / "knowledge-base-template/llm-wiki").resolve():
-        for path in all_files:
-            if path.suffix == ".base" and not within(path, kb.paths["templates"]):
-                placeholders = sorted(set(re.findall(r"__(?:KB_ROOT|WIKI_PATH|NOTES_PATH|WIKI_DIR|TEMPLATES_DIR|CATEGORY_PATH)__", path.read_text(encoding="utf-8-sig"))))
-                if placeholders:
-                    report("error", "base-binding-missing", path, "fill Base bindings before use: " + ", ".join(placeholders))
+    for path in all_files:
+        if path.suffix.lower() != ".base" or any(within(path, directory) for directory in kb.source_roots):
+            continue
+        try:
+            text = path.read_text(encoding="utf-8-sig")
+            validate_base(text)
+        except (ValueError, UnicodeError, yaml.YAMLError) as error:
+            report("error", "invalid-base", path, str(error))
+            continue
+        if kb.root != (vault / "knowledge-base-template/llm-wiki").resolve() and not within(path, kb.paths["templates"]):
+            placeholders = sorted(set(re.findall(r"__(?:KB_ROOT|WIKI_PATH|NOTES_PATH|WIKI_DIR|TEMPLATES_DIR|CATEGORY_PATH)__", text)))
+            if placeholders:
+                report("error", "base-binding-missing", path, "fill Base bindings before use: " + ", ".join(placeholders))
     notes = {}
     excluded = [*kb.source_roots, kb.paths["templates"]]
     admin_files = {kb.root / name for name in ("README.md", "AGENTS.md", "LICENSES.md")}
