@@ -5,6 +5,7 @@ import io
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -103,6 +104,38 @@ class WikiCase(unittest.TestCase):
             text = text.replace(token, value)
         put(base, text)
         self.assertEqual(self.findings(), [])
+
+    def test_initialize_rejects_content_before_creating_destination(self):
+        isolated = self.vault / "initializer"
+        template = isolated / "knowledge-base-template/llm-wiki"
+        shutil.copytree(self.template, template)
+        for relative in ("raw/private.md", "Clippings/assets/image.png", "Notes/idea.md", "reports/report.md", "wiki/article.md", "private.txt", "extra/data.pdf"):
+            with self.subTest(path=relative):
+                misplaced = template / relative
+                put(misplaced, "synthetic private content")
+                with self.assertRaisesRegex(ValueError, re.escape(relative)):
+                    initialize(isolated, "新库", "description")
+                self.assertFalse((isolated / "knowledge-base").exists())
+                self.assertEqual(misplaced.read_text(encoding="utf-8"), "synthetic private content")
+                misplaced.unlink()
+
+    def test_initialize_checks_mapped_content_and_allows_new_templates(self):
+        config = self.template / "kb.toml"
+        text = config.read_text(encoding="utf-8").replace('"raw"', '"资料"').replace('"wiki"', '"编译/知识"').replace('"wiki/', '"编译/知识/')
+        put(config, text)
+        (self.template / "raw").rename(self.template / "资料")
+        (self.template / "编译").mkdir()
+        (self.template / "wiki").rename(self.template / "编译/知识")
+        misplaced = self.template / "资料/private.md"
+        put(misplaced, "synthetic")
+        with self.assertRaisesRegex(ValueError, "资料/private.md"):
+            initialize(self.vault, "映射库", "description")
+        self.assertFalse((self.vault / "knowledge-base/映射库").exists())
+        misplaced.unlink()
+        put(self.template / "templates/extra/note.md", "# {{title}}")
+        target = initialize(self.vault, "映射库", "description")
+        self.assertEqual((target / "templates/extra/note.md").read_text(encoding="utf-8"), "# {{title}}")
+        self.assertEqual(inspect(target, self.vault), [])
 
     def test_binding_escapes_expression_and_yaml_quotes(self):
         target = initialize(self.vault, "中文 O'Brien", "引用路径")

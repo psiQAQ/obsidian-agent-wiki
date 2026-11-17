@@ -10,7 +10,10 @@ import sys
 
 import yaml
 
-from kb_common import ConfigError, KnowledgeBase, REPO_ROOT, UniqueKeyLoader, files_under, within
+from kb_common import ConfigError, KnowledgeBase, REPO_ROOT, SPECIAL_FILES, UniqueKeyLoader, files_under, within
+
+
+TEMPLATE_ROOT_FILES = {".gitignore", "AGENTS.md", "kb.toml", "knowledge.base", "LICENSES.md", "README.md"}
 
 
 def bind_overview(kb: KnowledgeBase, vault: Path) -> None:
@@ -38,6 +41,17 @@ def bind_overview(kb: KnowledgeBase, vault: Path) -> None:
     path.write_text(text, encoding="utf-8", newline="\r\n" if b"\r\n" in original else "\n")
 
 
+def assert_clean_template(kb: KnowledgeBase) -> None:
+    """Reject misplaced files before copying; filenames do not prove privacy."""
+    allowed = {kb.root / name for name in TEMPLATE_ROOT_FILES}
+    allowed.update(kb.paths[key] for key in SPECIAL_FILES)
+    allowed.update(directory / ".gitkeep" for directory in (*kb.source_roots, kb.paths["notes"], kb.paths["reports"]))
+    unexpected = [path.relative_to(kb.root).as_posix() for path in files_under(kb.root)
+                  if path not in allowed and not within(path, kb.paths["templates"])]
+    if unexpected:
+        raise ValueError("template contains non-skeleton files: " + ", ".join(sorted(unexpected)))
+
+
 def initialize(repo: Path, name: str, description: str) -> Path:
     if not name or name != name.strip() or name.endswith(".") or re.search(r'[<>:"/\\|?*\x00-\x1f]', name) or name.startswith("."):
         raise ValueError("name must be a single visible Windows-safe directory name")
@@ -50,10 +64,7 @@ def initialize(repo: Path, name: str, description: str) -> Path:
     if destination.exists() or destination.is_symlink():
         raise FileExistsError(f"destination already exists: {destination}")
     template = repo / "knowledge-base-template" / "llm-wiki"
-    KnowledgeBase.load(template)
-    for path in files_under(template):
-        if path.name == ".git" or ".obsidian" in path.relative_to(template).parts:
-            raise ValueError("template contains repository or Obsidian metadata")
+    assert_clean_template(KnowledgeBase.load(template))
     git = shutil.which("git")
     if git is None:
         raise RuntimeError("Git is required; install it explicitly before initialization")
