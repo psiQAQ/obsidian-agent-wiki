@@ -37,8 +37,9 @@ class RootCase(unittest.TestCase):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text, encoding="utf-8")
 
-    def test_new_root_note_and_content_directories_are_reviewed(self):
-        names = ["新 笔记.md", "根图.excalidraw.md", "Excalidraw/图.md", "Attachments/image.png"]
+    def test_unknown_root_files_and_directories_are_reviewed(self):
+        names = ["新 笔记.md", "根图.excalidraw.md", "image.png", "Excalidraw/图.md", "Attachments/image.png",
+                 "Daily/2026-11-17.md", "Templates/template.md", "References/book.pdf", "Categories/topic.md", "自定义目录/data.txt"]
         for name in names:
             self.put(name, "synthetic")
         self.put("docs/public.md", "public")
@@ -50,8 +51,25 @@ class RootCase(unittest.TestCase):
             self.put(name, "synthetic")
             self.git("check-ignore", "--", name)
         self.assertEqual(inspect_root(self.root), [])
-        self.git("add", "-f", "--", "assets/image.png", "Clippings/page.md")
-        self.assertEqual(inspect_root(self.root), ["Clippings/page.md", "assets/image.png"])
+        self.git("add", "-f", "--", "assets/image.png", "Clippings/page.md", "knowledge-base/private/Notes/private.md")
+        self.assertEqual(inspect_root(self.root), ["Clippings/page.md", "assets/image.png", "knowledge-base/private/Notes/private.md"])
+
+    def test_public_paths_are_allowed_without_expanding_from_tracked_paths(self):
+        for name in (".github/workflows/test.yml", ".agents/skills/new/SKILL.md", ".obsidian/app.json", ".vscode/settings.json",
+                     "knowledge-base-template/new/README.md", "scripts/new.py", "tests/test_new.py", "docs/new.md", "pyproject.toml"):
+            self.put(name, "public fixture")
+        self.assertEqual(inspect_root(self.root), [])
+        self.put("Unexpected/tracked.txt", "old")
+        self.git("add", "--", "Unexpected/tracked.txt")
+        self.git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", "commit", "-m", "fixture")
+        self.put("Unexpected/tracked.txt", "changed")
+        self.assertEqual(inspect_root(self.root), ["Unexpected/tracked.txt"])
+
+    def test_staged_content_is_reviewed_even_when_worktree_file_is_deleted(self):
+        self.put("Daily/note.md", "synthetic")
+        self.git("add", "--", "Daily/note.md")
+        (self.root / "Daily/note.md").unlink()
+        self.assertEqual(inspect_root(self.root), ["Daily/note.md"])
 
     def test_rename_destination_is_checked_and_deletion_is_not(self):
         self.git("mv", "docs/old.md", "移动.md")

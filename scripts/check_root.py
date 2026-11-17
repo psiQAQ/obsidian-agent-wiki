@@ -7,7 +7,9 @@ import sys
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-CONTENT_FOLDERS = {"Excalidraw", "Attachments", "assets", "Clippings"}
+# Explicit public paths at aa40d81; never infer permission from the current index.
+PUBLIC_DIRECTORIES = {".agents", ".github", ".obsidian", ".vscode", "docs", "knowledge-base-template", "scripts", "tests"}
+PUBLIC_ROOT_FILES = {".gitignore", ".gitmodules", ".python-version", "AGENTS.md", "README.md", "THIRD_PARTY_NOTICES.md", "pyproject.toml", "skills-lock.json", "uv.lock"}
 
 
 def git_output(root: Path, *args: str) -> str:
@@ -31,12 +33,12 @@ def inspect_root(root: Path) -> list[str]:
         status, name = record[:2], record[3:]
         if "R" in status or "C" in status:
             next(records)  # -z puts the destination first, then the original path.
-        if "D" in status:
+        if status in {" D", "D "}:
             continue
         path = PurePosixPath(name)
-        new_root_note = len(path.parts) == 1 and path.suffix.lower() == ".md" and (status == "??" or any(code in status for code in "ARC"))
-        loose_content = path.parts[0] in CONTENT_FOLDERS and len(path.parts) > 1
-        if new_root_note or loose_content:
+        public = (name in PUBLIC_ROOT_FILES if len(path.parts) == 1
+                  else path.parts[0] in PUBLIC_DIRECTORIES)
+        if not public:
             findings.add(name)
     return sorted(findings)
 
