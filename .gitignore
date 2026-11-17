@@ -16,3 +16,5 @@ knowledge-base
 /.cache/
 __pycache__/
 *.py[cod]
+
+docs/LLM-review/**
