@@ -23,7 +23,7 @@
 
 ## 共享配置与 Web Clipper
 
-- 共用根 `.obsidian/`，新知识库不复制另一套配置。共享 Templates 入口为 `knowledge-base-template/llm-wiki/templates`，更新会影响此后从该入口插入的页面，不自动改写旧页面。Bases 固定绑定所属库及目录映射，跨库或未知上下文显示空结果；现行知识与历史归档分视图。
+- 共用根 `.obsidian/`，新知识库不复制另一套配置。共享 Templates 入口为 `knowledge-base-template/llm-wiki/templates`，更新会影响此后从该入口插入的页面，不自动改写旧页面。本库 `templates/` 副本供人工复制、Agent 创建和独立迁出参考，不是插件自动入口，也不自动与公共目录同步；单库定制不默认改公共模板。Bases 固定绑定所属库及目录映射，跨库或未知上下文显示空结果；现行知识与历史归档分视图，现行知识和按类别浏览隐藏 `status: empty` 的空综述，保留综述文件与 README 入口。
 - 当前人工新建快捷键使用 Vault 根目录，不能假设会自动落入目标库 `Notes/`。指导用户从该文件夹新建笔记；明确归属后再整理错放内容。
 - Web Clipper 是独立浏览器扩展，它的模板与 Obsidian Templates 的 Markdown 模板不同，也不会由 `.obsidian/` 自动配置。Vault 字段填 Obsidian 中的 Vault 名称，保存位置填 Vault 内相对目录；本机示例及排错见[使用 Obsidian Web Clipper](knowledge-base-template/llm-wiki/README.md#使用%20Obsidian%20Web%20Clipper)。
 - 每库剪藏使用 `knowledge-base/<库名>/Clippings` 或该库实际映射；不存到公共模板或根目录共享 Clippings。剪藏后仍须明确发起摄入，原件不因处理完成而搬走。修改浏览器扩展设置或旧库映射须在当前任务范围内。
@@ -45,7 +45,7 @@ uv run --no-sync python scripts/init_kb.py "研究示例" --description "积累�
 uv run --no-sync python scripts/check_kb.py "knowledge-base/研究示例"
 ```
 
-初始化前确认公共模板只含模板文件；若 raw、Clippings 或 Notes 中夹带个人资料，先报告并请用户指定归属，不擅自删除，也不带入所有新库。初始化拒绝覆盖已有目录，复制模板、填写 README、按映射绑定总览并执行 `git init`；不创建初始提交、不设置远端。人工复制时还须填写新库 `knowledge.base` 的绑定占位符，详见知识库规则；不要替换整个库。新增模板文件时确认现有复制流程可以带入。
+初始化前确认公共模板只含模板文件。脚本按 `kb.toml` 映射检查待复制文件：来源层、Notes 与 reports 仅允许 `.gitkeep`，wiki 仅允许映射的索引、日志、综述，根目录仅允许既有骨架文件，templates 可扩展。额外文件会在创建目标库前被拒绝并列出相对路径；确认归属后处理，不擅自删除，也不带入所有新库。路径白名单不检查正文隐私，人工复制仍须核对内容。初始化拒绝覆盖已有目录，复制模板、填写 README、按映射绑定总览并执行 `git init`；不创建初始提交、不设置远端。人工复制时还须填写新库 `knowledge.base` 的绑定占位符，详见知识库规则；不要替换整个库。新增模板文件时确认现有复制流程可以带入。
 
 检查器只读，结果含义及语义复核要求见[检查与交付](knowledge-base-template/llm-wiki/AGENTS.md#检查与交付)。扫描件按当前会话可用的 `local-ocr` Skill 处理；不在本仓库安装 OCR 模型或将本机服务写成通用必需依赖。
 
@@ -92,7 +92,8 @@ git commit -m "chore: 更新 Steph 上游参考模板"
 
 - 按逻辑阶段验证并本地提交，仅暂存本次改动。尊重已有授权，不自动 push、设置 remote、发布或修改远端 PR。
 - 根 Git 忽略整个 `knowledge-base/`、根级 `assets/`、`Clippings/`、运行环境、缓存及 Obsidian 工作区、书签、图谱等知识库状态；各库的本地 Git 单独记录内容。根级忽略仅防误提交，不表示这些位置适合保存个人资料。
-- 按需运行 `uv run --no-sync python scripts/check_root.py`，只检查 Git 可见的变更路径：根级新增 Markdown，以及根级 Excalidraw、Attachments、assets、Clippings 中待提交或未跟踪内容。`REVIEW` 表示归属待确认，不判定私密性，不读取正文、不遍历被忽略私有库、不移动或暂存文件。退出码沿用 `0` 无发现、`1` 有发现、`2` 配置或运行失败；不安装提交钩子。
+- 按需运行 `uv run --no-sync python scripts/check_root.py`，只检查 Git 可见的变更路径：`scripts/check_root.py` 固定列出既有公共顶层目录和文件，其余路径均提示，包括未知目录、非 Markdown 文件和强制暂存的忽略路径；纯删除跳过。白名单不从当前 Git 状态自动扩充，新增公共路径先核对用途再维护。`REVIEW` 表示归属待确认，不判定私密性，不读取正文、不遍历被忽略私有库、不移动或暂存文件。退出码沿用 `0` 范围内无发现、`1` 有发现、`2` 配置或运行失败；`0` 不是内容隐私认证，不安装提交钩子。
+- `docs/LLM-review/` 用于本地评审材料，按本地忽略配置保存；以 `git check-ignore` 核对实际状态，不能假定报告已进入根 Git。正式可提交验收记录放在 `docs/` 下其他位置。
 - 公开前检查凭据、个人信息、私密路径、插件配置和参考材料的发布权限；不能仅因文件在 `.obsidian/` 内就认定适合公开。保留上游许可。
 - 本次产生且确认无用的库内小型临时文件可以清理。已有库、用户修改、历史缓存及归属不清的文件不属于清理范围；不得丢弃内容或借清理扩大授权。
 
