@@ -36,7 +36,7 @@
 
 ## 环境与共享工具
 
-共享脚本放在根 `scripts/`，复用根 uv Python 3.14 `.venv`。运行前检查现有环境；依赖安装、恢复、增删或锁文件变更须有明确授权，不能临时下载安装绕过。已装依赖的正常命令使用 `uv run --no-sync`；首次环境准备在已安装 Python 3.14、uv 和 Git 的前提下运行 `python scripts/setup_env.py`，见[根使用手册](README.md#环境)。该脚本不下载解释器，按锁文件同步运行与开发依赖，缓存和临时目录留在仓库内。
+共享脚本放在根 `scripts/`，复用根 uv Python 3.14 `.venv`。运行前检查现有环境；依赖安装、恢复、增删或锁文件变更须有明确授权，不能临时下载安装绕过。已装依赖的正常命令使用 `uv run --no-sync`；首次环境准备只需预装 uv 和 Git，先运行 `uv python install 3.14 --cache-dir .cache/uv`，再运行 `uv run --no-project --python 3.14 --cache-dir .cache/uv python scripts/setup_env.py`，见[根使用手册](README.md#环境)。该脚本由 uv 选择 Python 3.14，缺失时允许下载，并按锁文件同步运行与开发依赖；解释器使用 uv 托管安装目录，缓存和脚本运行时的临时目录留在仓库内。
 
 以下命令在仓库根目录的终端中运行；示例库名与简介按任务替换。命令应兼容 Windows、Ubuntu 和 macOS，优先相对路径和通用参数；复杂文件操作放入 Python 脚本并使用 `pathlib`，不依赖 PowerShell 或 GNU/BSD 特有选项。
 

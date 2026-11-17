@@ -6,15 +6,16 @@
 
 ## 环境
 
-首次使用先安装 **Python 3.14、uv 和 Git**，在本仓库根目录打开终端，确认 `python --version` 显示 3.14，再运行：
+首次使用只需先安装 **uv 和 Git**，并确认 `uv --version`、`git --version` 可运行；无需手动安装 Python。在本仓库根目录打开终端，依次运行：
 
 ```shell
-python scripts/setup_env.py
+uv python install 3.14 --cache-dir .cache/uv
+uv run --no-project --python 3.14 --cache-dir .cache/uv python scripts/setup_env.py
 ```
 
-Windows、Ubuntu 和 macOS 使用相同命令。若系统把 Python 3.14 命名为 `python3` 或 `python3.14`，仅将上面的 `python` 换成该命令；后续由 uv 选择项目解释器，无需激活虚拟环境。
+第一条命令由 uv 安装并管理 Python 3.14；第二条使用该版本启动准备脚本，按 `uv.lock` 创建或同步根 `.venv`，包含运行依赖和 pytest 开发依赖。`--no-project` 避免启动脚本前就自动同步项目依赖，由脚本统一设置环境后再同步。Windows、Ubuntu 和 macOS 使用相同命令，不依赖系统的 `python` 命令，也无需激活虚拟环境。
 
-脚本按 `uv.lock` 创建或同步根 `.venv`，包含运行依赖和 pytest 开发依赖；缓存及临时文件放在 `.cache/`，不修改全局环境变量，也不下载 Python。输出“环境准备完成”即为成功。缺少工具、解释器版本不符或锁文件缺失时会明确失败；网络或依赖同步失败时保留错误信息，解决原因后再运行，不删除已有环境重试。
+Python 解释器保存在 uv 的托管安装目录，缓存及脚本运行时的临时文件放在仓库 `.cache/`；脚本不修改全局环境变量，由 uv 选择 Python 3.14，缺失时允许下载。输出“环境准备完成”即为成功。缺少 uv、Git 或锁文件时会明确失败；解释器下载、网络或依赖同步失败时保留错误信息，解决原因后重新执行上述命令，不删除已有环境重试。
 
 日常运行使用 `uv run --no-sync python ...`，依赖变化后才重新准备环境。仅用 Obsidian 阅读和手写笔记不需要运行脚本，但本手册后续的命令示例均以环境已准备好为前提。
 
@@ -198,7 +199,7 @@ uv run --no-sync python -m pytest
 
 测试只使用隔离材料；临时目录及 pytest 缓存留在 `.cache/`，不会读取私有知识库或安装真实 Obsidian 插件。
 
-[GitHub Actions](https://github.com/psiQAQ/obsidian-agent-wiki/actions/workflows/python-tests.yml) 在 Windows、Ubuntu、macOS 上使用 Python 3.14 执行同一环境准备流程、pytest 和脚本帮助检查。push 或 PR 修改脚本、测试、依赖、融合模板、workflow、根 `.gitignore`、共享属性类型或 Templates 入口时触发，也支持手动运行；仅修改根使用文档不触发。各平台结果独立报告，CI 不验证 Obsidian 桌面界面或真实插件安装。
+[GitHub Actions](https://github.com/psiQAQ/obsidian-agent-wiki/actions/workflows/python-tests.yml) 在 Windows、Ubuntu、macOS 上由 uv 安装 Python 3.14，执行同一环境准备流程、pytest 和脚本帮助检查。push 或 PR 修改脚本、测试、依赖、融合模板、workflow、根 `.gitignore`、共享属性类型或 Templates 入口时触发，也支持手动运行；仅修改根使用文档不触发。各平台结果独立报告，CI 不验证 Obsidian 桌面界面或真实插件安装。
 
 | 想做的事 | 从哪里开始 |
 | --- | --- |

@@ -26,7 +26,6 @@ class SetupEnvironmentCase(unittest.TestCase):
         self.lock = self.root / "uv.lock"
         self.lock.write_bytes(b"version = 1\r\n")
         self.enterContext(redirect_stdout(io.StringIO()))
-        self.enterContext(patch("setup_env.sys.version_info", (3, 14, 5)))
         self.which = self.enterContext(patch("setup_env.shutil.which", side_effect=lambda name: f"/tools/{name}"))
         self.process = Mock(pid=123)
         self.process.wait.return_value = 0
@@ -37,21 +36,27 @@ class SetupEnvironmentCase(unittest.TestCase):
         setup_environment(self.root)
         command = self.popen.call_args.args[0]
         options = self.popen.call_args.kwargs
-        self.assertEqual(command, ["/tools/uv", "sync", "--locked", "--dev", "--python", sys.executable, "--no-python-downloads"])
+        self.assertEqual(command, ["/tools/uv", "sync", "--locked", "--dev", "--python", "3.14"])
         self.assertEqual(options["cwd"], self.root)
         for name in ("TEMP", "TMP", "TMPDIR", "UV_CACHE_DIR", "UV_PROJECT_ENVIRONMENT"):
             self.assertTrue(Path(options["env"][name]).is_relative_to(self.root))
-        self.assertEqual(options["env"]["UV_PYTHON_DOWNLOADS"], "never")
+        self.assertEqual(options["env"]["UV_PYTHON_DOWNLOADS"], "automatic")
         self.assertTrue((self.root / ".cache/tmp").is_dir())
         self.assertEqual(os.environ, original_environment)
         self.assertEqual(self.lock.read_bytes(), b"version = 1\r\n")
 
-    def test_wrong_python_fails_before_creating_cache(self):
-        with patch("setup_env.sys.version_info", (3, 13, 0)):
-            with self.assertRaisesRegex(RuntimeError, "Python 3.14"):
-                setup_environment(self.root)
-        self.popen.assert_not_called()
-        self.assertFalse((self.root / ".cache").exists())
+    def test_uv_selects_python_314_independently_of_bootstrap_interpreter(self):
+        with patch("setup_env.sys.version_info", (3, 13, 0)), patch("setup_env.sys.executable", "/tools/python3.13"):
+            setup_environment(self.root)
+        command = self.popen.call_args.args[0]
+        self.assertEqual(command[command.index("--python") + 1], "3.14")
+        self.assertNotIn("/tools/python3.13", command)
+
+    def test_sync_allows_missing_interpreter_download_even_if_parent_disables_it(self):
+        with patch.dict(os.environ, {"UV_PYTHON_DOWNLOADS": "never"}):
+            setup_environment(self.root)
+            self.assertEqual(self.popen.call_args.kwargs["env"]["UV_PYTHON_DOWNLOADS"], "automatic")
+            self.assertEqual(os.environ["UV_PYTHON_DOWNLOADS"], "never")
 
     def test_missing_tools_fail_without_starting_sync(self):
         for missing in ("uv", "git"):
@@ -62,12 +67,19 @@ class SetupEnvironmentCase(unittest.TestCase):
         self.popen.assert_not_called()
         self.assertFalse((self.root / ".cache").exists())
 
-    def test_missing_lock_fails_without_creating_cache(self):
-        self.lock.unlink()
-        with self.assertRaisesRegex(FileNotFoundError, "uv.lock"):
-            setup_environment(self.root)
-        self.popen.assert_not_called()
-        self.assertFalse((self.root / ".cache").exists())
+    def test_missing_project_files_fail_without_creating_cache(self):
+        for name in ("pyproject.toml", "uv.lock"):
+            with self.subTest(name=name):
+                path = self.root / name
+                original = path.read_bytes()
+                path.unlink()
+                try:
+                    with self.assertRaisesRegex(FileNotFoundError, name):
+                        setup_environment(self.root)
+                    self.popen.assert_not_called()
+                    self.assertFalse((self.root / ".cache").exists())
+                finally:
+                    path.write_bytes(original)
 
     def test_sync_failure_is_reported_without_retry_or_lock_rewrite(self):
         self.process.wait.return_value = 1

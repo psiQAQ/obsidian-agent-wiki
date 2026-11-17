@@ -1,4 +1,4 @@
-"""使用已安装的 Python 3.14 和 uv，在仓库内配置锁定的开发环境。"""
+"""由 uv 选择 Python 3.14，在仓库内配置锁定的开发环境（缺少解释器时允许下载）。"""
 
 import argparse
 import os
@@ -13,8 +13,6 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 def setup_environment(root: Path) -> None:
     root = root.resolve()
-    if sys.version_info[:2] != (3, 14):
-        raise RuntimeError("请使用已安装的 Python 3.14 运行本脚本；不会自动下载解释器。")
     uv = shutil.which("uv")
     if uv is None:
         raise RuntimeError("未找到 uv；请先安装 uv 并将其加入 PATH。")
@@ -32,16 +30,16 @@ def setup_environment(root: Path) -> None:
     env.update(
         UV_CACHE_DIR=str(cache),
         UV_PROJECT_ENVIRONMENT=str(root / ".venv"),
-        UV_PYTHON_DOWNLOADS="never",
+        UV_PYTHON_DOWNLOADS="automatic",
         TEMP=str(temporary), TMP=str(temporary), TMPDIR=str(temporary),
     )
     process = subprocess.Popen(
-        [uv, "sync", "--locked", "--dev", "--python", sys.executable, "--no-python-downloads"],
+        [uv, "sync", "--locked", "--dev", "--python", "3.14"],
         cwd=root, env=env,
     )
     print(f"uv sync PID: {process.pid}", flush=True)
     if process.wait() != 0:
-        raise RuntimeError("uv 同步失败；请检查上方错误。未改写锁文件，也未下载 Python。")
+        raise RuntimeError("uv 同步失败；请检查上方解释器下载或依赖同步错误。未改写锁文件。")
     print("环境准备完成：.venv；缓存和临时文件位于 .cache/。")
 
 
