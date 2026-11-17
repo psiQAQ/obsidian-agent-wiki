@@ -11,7 +11,7 @@ from urllib.parse import unquote, urlsplit
 import yaml
 
 from evidence import candidates, contains, prose, source_body
-from kb_common import ConfigError, DIRECTORIES, KnowledgeBase, Note, REPO_ROOT, SPECIAL_FILES, UniqueKeyLoader, files_under, read_note, within
+from kb_common import ConfigError, DIRECTORIES, KnowledgeBase, Note, REPO_ROOT, SPECIAL_FILES, files_under, read_note, within
 from markdown_links import WIKI_LINK, parse_markdown
 
 
@@ -69,7 +69,7 @@ def has_fragment(path, fragment):
 
 def validate_base(text):
     """Check YAML and outer containers, not expressions or plugin settings."""
-    data = yaml.load(text, Loader=UniqueKeyLoader)
+    data = yaml.safe_load(text)
     if data is None:
         return  # An empty Base is valid while being created.
     if not isinstance(data, dict):

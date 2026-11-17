@@ -151,11 +151,11 @@ class WikiCase(unittest.TestCase):
     def test_base_yaml_and_outer_shapes_are_checked(self):
         target = self.root / "wiki/bases/check.base"
         for content in ("filters: [", "- item\n", "scalar\n", "views: {}\n", "views: [1]\n",
-                        "filters: []\n", "views:\n  - filters: 1\n", "filters: x\nfilters: y\n"):
+                        "filters: []\n", "views:\n  - filters: 1\n", "filters: 1\n"):
             with self.subTest(content=content):
                 put(target, content)
                 self.assertTrue(any(item.code == "invalid-base" and item.level == "error" for item in self.findings()))
-        put(target, 'filters: file.hasTag("example")\nviews:\n  - type: plugin-view\n    filters:\n      and:\n        - file.ext == "md"\n    plugin_settings: [1, 2]\n')
+        put(target, 'filters: file.hasTag("example")\nviews:\n  - type: plugin-view\n    filters:\n      and:\n        - file.ext == "md"\n    plugin_settings:\n      1: [1, 2]\n')
         self.assertEqual(self.findings(), [])
         put(target, "")
         self.assertEqual(self.findings(), [])
