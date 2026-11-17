@@ -9,6 +9,9 @@ on:
       - 'pyproject.toml'
       - 'uv.lock'
       - 'knowledge-base-template/llm-wiki/**'
+      - '.gitignore'
+      - '.obsidian/types.json'
+      - '.obsidian/templates.json'
       - '.github/workflows/**'
   pull_request:
     paths:
@@ -17,6 +20,9 @@ on:
       - 'pyproject.toml'
       - 'uv.lock'
       - 'knowledge-base-template/llm-wiki/**'
+      - '.gitignore'
+      - '.obsidian/types.json'
+      - '.obsidian/templates.json'
       - '.github/workflows/**'
   workflow_dispatch:
 
@@ -66,3 +72,5 @@ jobs:
         run: uv run --no-sync python scripts/check_kb.py --help
       - name: Check plugin recovery help
         run: uv run --no-sync python scripts/restore_plugins.py --help
+      - name: Check root inspection help
+        run: uv run --no-sync python scripts/check_root.py --help

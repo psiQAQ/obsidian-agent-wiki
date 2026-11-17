@@ -9,6 +9,8 @@
 !/.obsidian/plugins/*/data.json
 /.obsidian/themes/
 knowledge-base
+/assets/
+/Clippings/
 
 /.venv/
 /.cache/

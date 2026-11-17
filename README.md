@@ -182,6 +182,14 @@ obsidian theme
 
 ## 检查、维护与详细规则
 
+提交共享配置前，如需检查是否把笔记或附件误放在 Vault 顶层，运行：
+
+```shell
+uv run --no-sync python scripts/check_root.py
+```
+
+它只看 Git 可见的变更路径：根级新增 Markdown，以及根级 `Excalidraw/`、`Attachments/`、`assets/`、`Clippings/` 内待提交或未跟踪的内容。提示只表示归属需要确认；公共根文档也可能需要人工确认。现有 README 的正常修改及 `docs/` 内文档不触发这类提示。工具不读正文、不扫描被忽略的私有库、不移动或暂存文件；退出码 `0` 无发现、`1` 有发现、`2` 配置或运行失败。根级 assets 和 Clippings 已忽略，强制暂存后仍会提示；忽略不代表应该把私有资料保存在根目录。
+
 在仓库根目录运行脚本测试：
 
 ```shell
@@ -190,7 +198,7 @@ uv run --no-sync python -m pytest
 
 测试只使用隔离材料；临时目录及 pytest 缓存留在 `.cache/`，不会读取私有知识库或安装真实 Obsidian 插件。
 
-[GitHub Actions](https://github.com/psiQAQ/obsidian-agent-wiki/actions/workflows/python-tests.yml) 在 Windows、Ubuntu、macOS 上使用 Python 3.14 执行同一环境准备流程、pytest 和脚本帮助检查。push 或 PR 修改脚本、测试、依赖、融合模板或 workflow 时触发，也支持手动运行；仅修改根使用文档不触发。各平台结果独立报告，CI 不验证 Obsidian 桌面界面或真实插件安装。
+[GitHub Actions](https://github.com/psiQAQ/obsidian-agent-wiki/actions/workflows/python-tests.yml) 在 Windows、Ubuntu、macOS 上使用 Python 3.14 执行同一环境准备流程、pytest 和脚本帮助检查。push 或 PR 修改脚本、测试、依赖、融合模板、workflow、根 `.gitignore`、共享属性类型或 Templates 入口时触发，也支持手动运行；仅修改根使用文档不触发。各平台结果独立报告，CI 不验证 Obsidian 桌面界面或真实插件安装。
 
 | 想做的事 | 从哪里开始 |
 | --- | --- |
@@ -201,4 +209,4 @@ uv run --no-sync python -m pytest
 | 了解本地 Git 与公开范围 | [共享规则：Git 与公开边界](AGENTS.md#Git%20与公开边界) |
 | 查看方案为什么这样设计 | [方案选择记录](docs/karpathy-llm-wiki-skill-redesign-material/redesign-choice.md) |
 
-README 说明怎样使用；AGENTS 记录 Agent 必须遵守的步骤、字段和维护边界，用户也可以打开核对。更新公共模板不会自动改写已建立的知识库，更新上游参考也不会自动合入融合模板。
+README 说明怎样使用；AGENTS 记录 Agent 必须遵守的步骤、字段和维护边界，用户也可以打开核对。更新公共模板不会自动改写旧库文件，但共享 Templates 入口会影响以后插入的页面；共享检查器升级后也可能产生新增提示。旧库升级、改名或改映射，按[绑定与升级顺序](knowledge-base-template/llm-wiki/AGENTS.md#分类入口与%20Bases)逐项评估，不覆盖人工内容。更新上游参考不会自动合入融合模板；上游 Base 可能查询全 Vault，页面模板的 `type` 也须适配本仓库约定后再使用。独立 Vault 迁出仍需另行设计工具入口与路径，不在本轮升级范围内。
