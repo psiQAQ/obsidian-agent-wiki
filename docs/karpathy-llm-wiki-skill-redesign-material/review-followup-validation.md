@@ -17,7 +17,9 @@
 
 实际启用版本：realclaudian 2.3.43、Excalidraw 2.29.2、Minimal Theme Settings 9.0.0、gogoga-table 0.17.1、gogoga-outline 0.6.0、gogoga-mindmap 0.78.1。插件本体和设置均未改动。
 
-远端读取最初因 SSH ProxyCommand 中的 `exec` 被 PowerShell 解释而失败。使用同一仓库的明确 HTTPS URL 后推送成功，未修改持久 remote 或 SSH 配置。CLI 最初报告无法找到 Obsidian，随后从仓库工作目录核对 Vault 路径和名称、查询启用列表成功；不把这次连接失败解释成插件缺失。下文保留首轮验收和当时的未运行记录。
+远端读取最初因 SSH ProxyCommand 中的 `exec` 被 PowerShell 解释而失败。使用同一仓库的明确 HTTPS URL 后推送成功，未修改持久 remote 或 SSH 配置。CLI 最初报告无法找到 Obsidian，随后从仓库工作目录核对 Vault 路径和名称、查询启用列表成功；不把这次连接失败解释成插件缺失。
+
+> 下文保留首轮验收和当时的未运行记录。
 
 ## 自动检查
 
@@ -53,7 +55,7 @@ Obsidian 1.15.1（安装器同版本），Excalidraw 2.29.2。使用官方 CLI �
 | 未绑定公共样板 | Passed | 空结果。 |
 | Excalidraw 从 Notes 创建并嵌入 | Passed | 实际生成于 A/Notes/assets，原笔记生成嵌入链接；返回原笔记后可见已加载的嵌入及 1 个图像元素。插件配置未变。 |
 
-前十行合计 15 个 Bases 场景。Excalidraw 另作一个文档操作验证；本轮验证创建、落盘和嵌入，不评价绘图内容。
+> 前十行合计 15 个 Bases 场景。Excalidraw 另作一个文档操作验证；本轮验证创建、落盘和嵌入，不评价绘图内容。
 
 ## 首轮失败诊断与当时未运行范围
 

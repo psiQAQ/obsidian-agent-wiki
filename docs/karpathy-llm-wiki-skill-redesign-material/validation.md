@@ -19,7 +19,9 @@
 | Passed | 实际 Obsidian 界面 | 共享人工笔记模板插入成功，生成日期和 `managed_by: human`；插入的 115 字节 SVG 正常显示，落在测试库的 `Notes/assets/attachment.svg`。 |
 | Passed | Git 静态检查 | 整个 knowledge-base、环境、缓存、工作区、书签和图谱状态被忽略；模板保留许可。共享 app.json 只提交本次附件设置，用户原有设置、插件、主题和参考材料保持未提交。 |
 
-复现自动检查：在仓库根目录运行 `uv run --no-sync python -m unittest discover -s tests -v`。测试只在根 `.cache/tests/` 中创建和清理样例。真实知识库未作为测试输入。
+复现自动检查：在仓库根目录运行 `uv run --no-sync python -m unittest discover -s tests -v`。
+
+> 测试只在根 `.cache/tests/` 中创建和清理样例。真实知识库未作为测试输入。
 
 ## 失败记录及处理
 
@@ -32,7 +34,7 @@
 
 证据脚本是线索检查器。定性事实、普通短整数、释义、计算和上下文需要逐条阅读原文；字符串匹配不等于语义验证。PDF、图片等非文本证据只报告需要另外核查，不自动执行 OCR。未使用真实私人资料进行内容质量验收。
 
-Bases 不读取 `kb.toml`。更改模板目录时需同步修改两处模板目录过滤条件，方法见融合模板 README；其他目录映射由脚本读取。
+> Bases 不读取 `kb.toml`。更改模板目录时需同步修改两处模板目录过滤条件，方法见融合模板 README；其他目录映射由脚本读取。
 
 本次临时库 `knowledge-base/LLM 验收 A`、`knowledge-base/LLM 验收 B` 与仓库内临时脚本、uv 缓存均在验收后清理；根 `.venv` 是交付环境，予以保留。没有仓库外临时文件或超大文件待清理。
 

@@ -12,7 +12,9 @@
 | 恢复配置、启用后 | 配置仍为 821 字节，与原文件逐字节一致；全部原 JSON 设置值一致 | CLI 显示 `enabled true`，运行时插件对象已加载 |
 | 最终状态 | 原配置及原启用清单的内容、顺序和字节均已恢复；保留 CLI 重装的 9.0.0 发行文件 | 六个原启用插件全部保留 |
 
-**Passed — 实际运行：** `plugin:uninstall`、`plugin:install`、`plugin:enable` 均检查了返回文本和文件状态。运行时设置与原配置全部匹配；DOM/CSS 检查确认 Minimal Flexoki Dark 等样式类存在，行宽为 `100rem`、行高为 `1.1`。这验证了配置恢复和加载，不代表卸载保留配置，也不推广为其他插件或版本的行为保证。
+**Passed — 实际运行：** `plugin:uninstall`、`plugin:install`、`plugin:enable` 均检查了返回文本和文件状态。运行时设置与原配置全部匹配；DOM/CSS 检查确认 Minimal Flexoki Dark 等样式类存在，行宽为 `100rem`、行高为 `1.1`。
+
+> 这验证了配置恢复和加载，不代表卸载保留配置，也不推广为其他插件或版本的行为保证。
 
 首次验证曾 **Failed — 验证脚本时序检查**：启用命令返回后立即读取 `community-plugins.json`，尚未落盘的列表触发断言，脚本保护性恢复原包和配置。原始输出保留在 `.cache/plugin-reinstall-20261116/first-attempt.txt`。增加最长 10 秒、间隔 0.2 秒的状态等待后完成复验，实际无需等待满 10 秒。这不是插件安装失败或设置丢失；首次运行的加载对象和设置值也已核对成功。
 
@@ -25,6 +27,8 @@
 - Excalidraw 的服务 API key 均为空，内嵌 `libraryItems` 为空；服务地址为公开提供商地址。模板、字体和素材目录为通用相对路径，未发现需要阻止本次保留的私密内容，原文件不改写。
 - Claudian 无插件目录 `data.json`，其 `.claudian/` 继续忽略。以后提交任何插件配置前仍须重新审查。
 
-**Passed — 静态检查：** 10 个原已跟踪的本体文件从 Git 索引移除，移除前后磁盘字节相同；共检查 26 个本地插件/主题文件的忽略状态，仅两个 `data.json` 保留跟踪。README 的 7 个 PowerShell 代码块通过语法解析，改动通过 `git diff --check`。未批量重装其他插件或主题：本次实际安装验证范围仅为 Minimal Settings，其余恢复命令依据官方 CLI 帮助编写。
+**Passed — 静态检查：** 10 个原已跟踪的本体文件从 Git 索引移除，移除前后磁盘字节相同；共检查 26 个本地插件/主题文件的忽略状态，仅两个 `data.json` 保留跟踪。README 的 7 个 PowerShell 代码块通过语法解析，改动通过 `git diff --check`。
+
+> 未批量重装其他插件或主题：本次实际安装验证范围仅为 Minimal Settings，其余恢复命令依据官方 CLI 帮助编写。
 
 原始命令输出、CLI 子进程 PID、分阶段状态和最终结果保留在已忽略的 `.cache/plugin-reinstall-20261116/result.json`，Git 检查清单为同目录的 `git-check.json`。验证脚本同目录保留，用于解释此次证据；它是一次性验证工具，不是日常恢复入口。临时插件包和启用清单备份已在最终复核后清理；没有本次遗留的仓库外临时文件。日常恢复使用[根 README](../README.md#恢复共享插件与主题)。
