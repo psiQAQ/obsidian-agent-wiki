@@ -313,14 +313,22 @@ class WikiCase(unittest.TestCase):
         self.assertEqual(snapshot.read_bytes(), before)
         self.assertNotIn("source-scope", self.codes())
 
-    def test_index_missing_and_stale_date(self):
+    def test_index_dates_are_optional_and_legacy_dates_are_ignored(self):
         self.populate()
         index = self.root / "wiki" / "index.md"
         original = index.read_text(encoding="utf-8")
         put(index, original.replace("2026-11-16", "2026-11-14"))
-        self.assertIn("index-date", self.codes())
+        self.assertEqual(self.findings(), [])
+        put(index, "# 索引\n\n| 页面 | 摘要 |\n| --- | --- |\n| [概念](./概念.md) | 概念摘要 |\n| [综述](./overview.md) | 综述摘要 |\n")
+        self.assertEqual(self.findings(), [])
+
+    def test_index_still_rejects_missing_duplicate_and_broken_entries(self):
+        self.populate()
+        index = self.root / "wiki" / "index.md"
         put(index, "# 索引\n")
         self.assertIn("index-missing", self.codes())
+        put(index, "# 索引\n\n[概念](./概念.md)\n[重复](./概念.md)\n[缺失](./missing.md)\n")
+        self.assertTrue({"index-duplicate", "broken-link", "index-missing"} <= self.codes())
 
     def test_human_organization_boundary(self):
         # The Agent performs this workflow; no automatic content rewriting API.

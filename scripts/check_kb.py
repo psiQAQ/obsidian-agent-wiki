@@ -286,9 +286,8 @@ def inspect(root: Path, vault: Path = REPO_ROOT) -> list[Finding]:
 
     index_path = kb.paths["index"]
     if index_path in notes:
-        indexed = {}
+        indexed = set()
         parsed = parsed_notes[index_path]
-        lines = parsed.text.splitlines()
         for link in parsed.links:
             target, _ = local_target(index_path, link.target, known)
             if target is None:
@@ -297,17 +296,12 @@ def inspect(root: Path, vault: Path = REPO_ROOT) -> list[Finding]:
                 report("error", "index-scope", index_path, "index target is outside the wiki: " + link.target)
             if target in indexed:
                 report("error", "index-duplicate", index_path, "duplicate entry: " + link.target)
-            date_match = re.search(r"\|\s*(\d{4}-\d{2}-\d{2})\s*\|?\s*$", lines[link.line - 1])
-            indexed[target] = day(date_match[1]) if date_match else None
+            indexed.add(target)
         for path, note in articles.items():
             if path == kb.paths["overview"] and note.metadata.get("status") == "empty":
                 continue
             if path not in indexed:
                 report("error", "index-missing", path, "knowledge page is absent from the index")
-                continue
-            field = "archived" if note.metadata.get("type") == "archive" else "updated"
-            if day(note.metadata.get(field)) != indexed[path]:
-                report("error", "index-date", path, "index date must equal page " + field)
 
     log_path = kb.paths["log"]
     no_material = set()
