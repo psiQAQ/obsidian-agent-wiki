@@ -1,4 +1,4 @@
-"""通过官方 Obsidian CLI 安装启用清单中缺失的插件，保留已有配置。"""
+"""通过官方 Obsidian CLI 安装或补装启用清单中的缺失文件，保留已有配置。"""
 
 import argparse
 import json
@@ -9,6 +9,11 @@ import sys
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+REQUIRED_FILES = ("manifest.json", "main.js")
+
+
+def missing_files(directory: Path) -> list[str]:
+    return [name for name in REQUIRED_FILES if not (directory / name).is_file()]
 
 
 def run_cli(cli: str, vault: str, root: Path, *args: str) -> str:
@@ -41,17 +46,18 @@ def restore_plugins(root: Path, vault: str, cli: str, dry_run: bool = False) -> 
         directory = root / ".obsidian/plugins" / plugin_id
         if not directory.resolve().is_relative_to(root):
             raise ValueError(f"插件目录指向仓库外：{plugin_id}")
-        # Match the documented recovery scope: existing manifests are not upgrades.
-        if (directory / "manifest.json").is_file():
+        missing = missing_files(directory)
+        if not missing:
             print(f"跳过已安装插件：{plugin_id}")
         else:
-            print(f"待安装：{plugin_id}")
+            action = "补装" if len(missing) < len(REQUIRED_FILES) else "安装"
+            print(f"待{action}：{plugin_id}；缺失文件：{', '.join(missing)}")
             pending.append((plugin_id, directory))
     if dry_run:
-        print(f"预览完成：{len(pending)} 个插件待安装；未调用 CLI 或修改文件。")
+        print(f"预览完成：{len(pending)} 个插件待安装或补装；未调用 CLI 或修改文件。")
         return
     if not pending:
-        print("没有缺失插件，无需安装。")
+        print("插件文件齐全，无需安装或补装。")
         return
 
     target = run_cli(cli, vault, root, "vault", "info=path")
@@ -62,8 +68,9 @@ def restore_plugins(root: Path, vault: str, cli: str, dry_run: bool = False) -> 
         original = config.read_bytes() if config.exists() else None
         try:
             run_cli(cli, vault, root, "plugin:install", f"id={plugin_id}")
-            if not all((directory / name).is_file() for name in ("manifest.json", "main.js")):
-                raise RuntimeError(f"安装文件不完整：{plugin_id}")
+            missing = missing_files(directory)
+            if missing:
+                raise RuntimeError(f"安装文件不完整：{plugin_id}；缺失文件：{', '.join(missing)}")
         finally:
             if original is not None:
                 directory.mkdir(parents=True, exist_ok=True)
@@ -83,7 +90,7 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--vault", default=REPO_ROOT.name, help="Obsidian 中的 Vault 名称")
     parser.add_argument("--cli", default="obsidian", help="官方 CLI 命令或可执行文件路径")
-    parser.add_argument("--dry-run", action="store_true", help="只列出待安装项，不调用 CLI")
+    parser.add_argument("--dry-run", action="store_true", help="只列出待安装或补装项及缺失文件，不调用 CLI")
     args = parser.parse_args(argv)
     try:
         restore_plugins(REPO_ROOT, args.vault, args.cli, args.dry_run)

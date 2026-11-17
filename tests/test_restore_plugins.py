@@ -32,6 +32,7 @@ class RestorePluginsCase(unittest.TestCase):
         self.existing = self.root / ".obsidian/plugins/existing-plugin"
         self.existing.mkdir()
         (self.existing / "manifest.json").write_text("{}", encoding="utf-8")
+        (self.existing / "main.js").write_text("", encoding="utf-8")
         self.enterContext(redirect_stdout(io.StringIO()))
 
     def fake_cli(self, cli, vault, root, command, *args):
@@ -105,6 +106,43 @@ class RestorePluginsCase(unittest.TestCase):
                     with self.assertRaises(ValueError):
                         restore_plugins(self.root, "vault", "cli")
                 call.assert_not_called()
+
+    def test_each_partial_install_is_previewed_and_repaired(self):
+        for present, missing in (("manifest.json", "main.js"), ("main.js", "manifest.json")):
+            with self.subTest(present=present):
+                for name in ("manifest.json", "main.js"):
+                    (self.plugin / name).unlink(missing_ok=True)
+                (self.plugin / present).write_text("partial", encoding="utf-8")
+                output = io.StringIO()
+                with patch("restore_plugins.run_cli") as call, redirect_stdout(output):
+                    restore_plugins(self.root, "vault", "cli", dry_run=True)
+                call.assert_not_called()
+                self.assertIn("待补装：missing-plugin", output.getvalue())
+                self.assertIn("缺失文件：" + missing, output.getvalue())
+                self.assertFalse((self.plugin / missing).exists())
+                with patch("restore_plugins.run_cli", side_effect=self.fake_cli) as call:
+                    restore_plugins(self.root, "vault", "cli")
+                self.assertEqual(sum(c.args[3] == "plugin:install" for c in call.call_args_list), 1)
+                self.assertEqual(self.config.read_bytes(), self.original)
+
+    def test_failed_partial_install_can_be_retried(self):
+        self.selection.write_text('["missing-plugin", "next-plugin"]', encoding="utf-8")
+        def interrupted(cli, vault, root, command, *args):
+            if command == "vault":
+                return str(self.root)
+            (self.plugin / "manifest.json").write_text("{}", encoding="utf-8")
+            self.config.write_bytes(b"overwritten during installation")
+            raise RuntimeError("interrupted installation")
+        with patch("restore_plugins.run_cli", side_effect=interrupted) as call:
+            with self.assertRaisesRegex(RuntimeError, "interrupted"):
+                restore_plugins(self.root, "vault", "cli")
+        self.assertEqual(self.config.read_bytes(), self.original)
+        self.assertFalse(any("id=next-plugin" in c.args for c in call.call_args_list))
+        self.selection.write_text('["missing-plugin", "existing-plugin"]', encoding="utf-8")
+        with patch("restore_plugins.run_cli", side_effect=self.fake_cli) as call:
+            restore_plugins(self.root, "vault", "cli")
+        self.assertTrue(any(c.args[3] == "plugin:install" for c in call.call_args_list))
+        self.assertEqual(self.config.read_bytes(), self.original)
 
     def test_cli_zero_exit_error_is_failure_and_arguments_are_separate(self):
         process = Mock(pid=123, returncode=0)
