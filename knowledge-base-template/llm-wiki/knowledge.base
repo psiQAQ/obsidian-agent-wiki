@@ -24,6 +24,7 @@ views:
     name: 现行知识
     filters:
       and:
+        - 'status != "empty"'
         - 'managed_by == "agent"'
         - 'type == "source" || type == "entity" || type == "concept" || type == "analysis" || type == "overview" || type == "category"'
         - 'file.inFolder("__WIKI_PATH__")'
@@ -50,6 +51,7 @@ views:
     name: 按类别浏览
     filters:
       and:
+        - 'status != "empty"'
         - 'managed_by == "agent"'
         - 'type == "source" || type == "entity" || type == "concept" || type == "analysis" || type == "overview" || type == "category"'
         - 'file.inFolder("__WIKI_PATH__")'

@@ -1,0 +1,240 @@
+{
+  "obsidian_version": "1.15.1",
+  "method": "Official CLI, visible loaded Bases DOM",
+  "cases": [
+    {
+      "case": "空综述不出现在现行知识",
+      "status": "Passed",
+      "expected": [
+        "knowledge-base/验收-20261117-review-A/wiki/control.md"
+      ],
+      "actual": {
+        "file": "knowledge-base/验收-20261117-review-A/knowledge.base",
+        "pid": 60600,
+        "view": "现行知识",
+        "visible": true,
+        "loading": false,
+        "rows": [
+          "knowledge-base/验收-20261117-review-A/wiki/control.md"
+        ],
+        "error": ""
+      }
+    },
+    {
+      "case": "空综述不出现在按类别浏览",
+      "status": "Passed",
+      "expected": [
+        "knowledge-base/验收-20261117-review-A/wiki/control.md"
+      ],
+      "actual": {
+        "file": "knowledge-base/验收-20261117-review-A/knowledge.base",
+        "pid": 60600,
+        "view": "按类别浏览",
+        "visible": true,
+        "loading": false,
+        "rows": [
+          "knowledge-base/验收-20261117-review-A/wiki/control.md"
+        ],
+        "error": ""
+      }
+    },
+    {
+      "case": "填写综述后出现在按类别浏览",
+      "status": "Passed",
+      "expected": [
+        "knowledge-base/验收-20261117-review-A/wiki/control.md",
+        "knowledge-base/验收-20261117-review-A/wiki/overview.md"
+      ],
+      "actual": {
+        "file": "knowledge-base/验收-20261117-review-A/knowledge.base",
+        "pid": 60600,
+        "view": "按类别浏览",
+        "visible": true,
+        "loading": false,
+        "rows": [
+          "knowledge-base/验收-20261117-review-A/wiki/control.md",
+          "knowledge-base/验收-20261117-review-A/wiki/overview.md"
+        ],
+        "error": ""
+      }
+    },
+    {
+      "case": "填写综述后出现在现行知识",
+      "status": "Passed",
+      "expected": [
+        "knowledge-base/验收-20261117-review-A/wiki/control.md",
+        "knowledge-base/验收-20261117-review-A/wiki/overview.md"
+      ],
+      "actual": {
+        "file": "knowledge-base/验收-20261117-review-A/knowledge.base",
+        "pid": 60600,
+        "view": "现行知识",
+        "visible": true,
+        "loading": false,
+        "rows": [
+          "knowledge-base/验收-20261117-review-A/wiki/control.md",
+          "knowledge-base/验收-20261117-review-A/wiki/overview.md"
+        ],
+        "error": ""
+      }
+    },
+    {
+      "case": "人工笔记仍只显示本库 Notes",
+      "status": "Passed",
+      "expected": [
+        "knowledge-base/验收-20261117-review-A/Notes/human.md"
+      ],
+      "actual": {
+        "file": "knowledge-base/验收-20261117-review-A/knowledge.base",
+        "pid": 60600,
+        "view": "人工笔记",
+        "visible": true,
+        "loading": false,
+        "rows": [
+          "knowledge-base/验收-20261117-review-A/Notes/human.md"
+        ],
+        "error": ""
+      }
+    },
+    {
+      "case": "历史归档仍只显示本库归档",
+      "status": "Passed",
+      "expected": [
+        "knowledge-base/验收-20261117-review-A/wiki/archive.md"
+      ],
+      "actual": {
+        "file": "knowledge-base/验收-20261117-review-A/knowledge.base",
+        "pid": 60600,
+        "view": "历史归档",
+        "visible": true,
+        "loading": false,
+        "rows": [
+          "knowledge-base/验收-20261117-review-A/wiki/archive.md"
+        ],
+        "error": ""
+      }
+    }
+  ],
+  "commands": [
+    {
+      "command": "vault",
+      "pid": 101460,
+      "exit_code": 0
+    },
+    {
+      "command": "eval",
+      "pid": 115052,
+      "exit_code": 0
+    },
+    {
+      "command": "eval",
+      "pid": 102992,
+      "exit_code": 0
+    },
+    {
+      "command": "eval",
+      "pid": 120076,
+      "exit_code": 0
+    },
+    {
+      "command": "eval",
+      "pid": 118628,
+      "exit_code": 0
+    },
+    {
+      "command": "eval",
+      "pid": 100256,
+      "exit_code": 0
+    },
+    {
+      "command": "vault",
+      "pid": 56488,
+      "exit_code": 0
+    },
+    {
+      "command": "eval",
+      "pid": 86452,
+      "exit_code": 0
+    },
+    {
+      "command": "eval",
+      "pid": 97096,
+      "exit_code": 0
+    },
+    {
+      "command": "eval",
+      "pid": 112728,
+      "exit_code": 0
+    },
+    {
+      "command": "eval",
+      "pid": 120632,
+      "exit_code": 0
+    },
+    {
+      "command": "eval",
+      "pid": 118644,
+      "exit_code": 0
+    },
+    {
+      "command": "eval",
+      "pid": 4176,
+      "exit_code": 0
+    },
+    {
+      "command": "eval",
+      "pid": 110244,
+      "exit_code": 0
+    },
+    {
+      "command": "eval",
+      "pid": 120792,
+      "exit_code": 0
+    },
+    {
+      "command": "eval",
+      "pid": 103032,
+      "exit_code": 0
+    },
+    {
+      "command": "eval",
+      "pid": 109648,
+      "exit_code": 0
+    },
+    {
+      "command": "eval",
+      "pid": 116284,
+      "exit_code": 0
+    },
+    {
+      "command": "eval",
+      "pid": 112620,
+      "exit_code": 0
+    },
+    {
+      "command": "eval",
+      "pid": 21548,
+      "exit_code": 0
+    },
+    {
+      "command": "eval",
+      "pid": 97396,
+      "exit_code": 0
+    }
+  ],
+  "date": "2026-11-17",
+  "fixture_libraries": [
+    "knowledge-base/验收-20261117-review-A",
+    "knowledge-base/验收-20261117-review-B"
+  ],
+  "initial_issues": [
+    {
+      "kind": "verification_context",
+      "message": "Initial capture stopped with unexpected active file after focus moved away from the synthetic Base. No product assertion ran. The verifier then selected the unique existing test tab and all six scenarios passed."
+    },
+    {
+      "kind": "tool_output",
+      "message": "base:query returned no stdout during exploration; results were established from visible, loaded Base DOM rows instead."
+    }
+  ]
+}
