@@ -3,7 +3,7 @@
 import argparse
 from dataclasses import dataclass
 from datetime import date, datetime
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import re
 import sys
 from urllib.parse import unquote, urlsplit
@@ -65,6 +65,40 @@ def has_fragment(path, fragment):
     headings = [re.sub(r"\s+#+\s*$", "", match[1]).strip() for match in re.finditer(r"^#{1,6}\s+(.+)$", body, re.M)]
     requested = fragment.split("#")[-1].casefold()
     return any(requested in {heading.casefold(), re.sub(r"[^\w\- ]", "", heading.casefold()).replace(" ", "-")} for heading in headings)
+
+
+def inspect_snapshots(kb, snapshots, report):
+    """Compare metadata only; never refresh snapshots or read the original body."""
+    grouped = {}
+    for snapshot, note in snapshots.items():
+        data = note.metadata
+        keys = ("snapshot_source_note", "snapshot_source_mtime_ns")
+        if not any(key in data for key in keys):
+            continue  # Older sources remain compatible without retroactive edits.
+        source, mtime = (data.get(key) for key in keys)
+        if not isinstance(source, str) or not source or not isinstance(mtime, str) or not re.fullmatch(r"[0-9]+", mtime):
+            report("review", "snapshot-metadata", snapshot, "snapshot requires source path and quoted decimal snapshot_source_mtime_ns; metadata is incomplete or invalid")
+            continue
+        if "\\" in source or Path(source).is_absolute() or PureWindowsPath(source).drive or urlsplit(source).scheme:
+            report("review", "snapshot-source-scope", snapshot, "snapshot_source_note must be a relative path into this library's Notes; not followed")
+            continue
+        original = (snapshot.parent / source).resolve()
+        if not within(original, kb.paths["notes"]):
+            report("review", "snapshot-source-scope", snapshot, "original is outside this library's Notes; not followed: " + source)
+            continue
+        grouped.setdefault(original, []).append((snapshot, mtime.lstrip("0") or "0"))
+    for original, entries in grouped.items():
+        labels = ", ".join(path.relative_to(kb.root).as_posix() for path, _ in entries)
+        try:
+            current = original.stat()
+            if not original.is_file():
+                report("review", "snapshot-source-unverified", original, "original is not a file; referenced snapshots: " + labels)
+            elif any(str(current.st_mtime_ns) != mtime for _, mtime in entries):
+                report("review", "snapshot-source-changed", original, "original may have changed; review whether to ingest again (mtime is not content proof); referenced snapshots: " + labels)
+        except FileNotFoundError:
+            report("review", "snapshot-source-missing", original, "original note is missing; referenced snapshots: " + labels)
+        except OSError as error:
+            report("review", "snapshot-source-unverified", original, f"cannot verify original note: {error}; referenced snapshots: {labels}")
 
 
 def inspect(root: Path, vault: Path = REPO_ROOT) -> list[Finding]:
@@ -194,6 +228,7 @@ def inspect(root: Path, vault: Path = REPO_ROOT) -> list[Finding]:
             report("review", "human-wikilink-scope", path, "short wikilinks have unverified actual Vault resolution; checked only this library: " + ", ".join(sorted(short_links)))
 
     raw_references = set()
+    snapshots = {}
     for path, note in articles.items():
         metadata = note.metadata
         kind = metadata["type"]
@@ -237,6 +272,8 @@ def inspect(root: Path, vault: Path = REPO_ROOT) -> list[Finding]:
                 continue
             try:
                 raw = read_note(target)
+                if within(target, kb.paths["raw"]):
+                    snapshots[target] = raw
                 evidence.append(source_body(raw.body))
             except (ValueError, UnicodeError, yaml.YAMLError) as error:
                 report("review", "evidence-unverified", path, f"cannot parse evidence {value}: {error}")
@@ -244,6 +281,8 @@ def inspect(root: Path, vault: Path = REPO_ROOT) -> list[Finding]:
             for candidate in candidates(note.body):
                 if not any(contains(text, candidate) for text in evidence):
                     report("review", "evidence-candidate", path, f"{candidate.kind} not located verbatim; review context/derivation: {candidate.value}")
+
+    inspect_snapshots(kb, snapshots, report)
 
     index_path = kb.paths["index"]
     if index_path in notes:

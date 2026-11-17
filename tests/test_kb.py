@@ -18,7 +18,7 @@ import yaml
 
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "scripts"))
-from check_kb import inspect, main as check_main
+from check_kb import inspect, inspect_snapshots, main as check_main
 from evidence import candidates, contains
 from init_kb import bind_overview, initialize
 from kb_common import ConfigError, KnowledgeBase, read_note
@@ -424,6 +424,79 @@ class WikiCase(unittest.TestCase):
             "- Raw: [重复][]\n\n[重复]: ../raw/重复.md\n")
         put(self.root / "reports/review.md", "[概念][c]\n\n[c]: ../wiki/概念.md\n")
         self.assertEqual(self.findings(), [])
+
+
+    def prepare_snapshot(self):
+        self.populate()
+        original = self.root / "Notes/原笔记.md"
+        note(original, "# 原笔记\n样本数量为 42K。", type="note", managed_by="human", sources=[])
+        raw = self.root / "raw/原始 资料.md"
+        metadata = {"snapshot_source_note": "../Notes/原笔记.md", "snapshot_source_mtime_ns": str(original.stat().st_mtime_ns)}
+        put(raw, "---\n" + yaml.safe_dump(metadata, allow_unicode=True) + "---\n样本数量为 42K。\n")
+        return original, raw, metadata
+
+    def test_snapshot_mtime_warning_grouped_and_read_only(self):
+        original, raw, metadata = self.prepare_snapshot()
+        self.assertEqual(self.findings(), [])
+        second = raw.with_name("第二份快照.md")
+        second.write_bytes(raw.read_bytes())
+        note(self.root / "wiki/第二知识.md", "样本数量为 42K。", sources=["../raw/第二份快照.md"])
+        self.index()
+        before = {path: path.read_bytes() for path in (raw, second, self.root / "wiki/概念.md", self.root / "wiki/第二知识.md")}
+        current = original.stat()
+        os.utime(original, ns=(current.st_atime_ns, current.st_mtime_ns + 2_000_000_000))
+        found = [item for item in self.findings() if item.code.startswith("snapshot-")]
+        self.assertEqual([(item.code, item.level, item.path) for item in found], [("snapshot-source-changed", "review", original)])
+        self.assertIn("第二份快照.md", found[0].message)
+        self.assertEqual(before, {path: path.read_bytes() for path in before})
+
+    def test_snapshot_missing_invalid_and_legacy_metadata(self):
+        original, raw, metadata = self.prepare_snapshot()
+        original.unlink()
+        self.assertIn("snapshot-source-missing", self.codes())
+        for changes in ({"snapshot_source_mtime_ns": 123}, {"snapshot_source_mtime_ns": "1.25"}, {"snapshot_source_note": None}, {"snapshot_source_mtime_ns": None}):
+            with self.subTest(changes=changes):
+                put(raw, "---\n" + yaml.safe_dump(metadata | changes, allow_unicode=True) + "---\n样本数量为 42K。")
+                self.assertIn("snapshot-metadata", self.codes())
+        put(raw, "# 旧快照\n样本数量为 42K。")
+        self.assertEqual(self.findings(), [])
+
+    def test_snapshot_scope_is_checked_before_original_status(self):
+        original, raw, metadata = self.prepare_snapshot()
+        for source in ("../../B/Notes/private.md", "../wiki/概念.md", "C:/private.md", "https://example.org/note"):
+            with self.subTest(source=source):
+                snapshot = read_note(raw)
+                snapshot.metadata["snapshot_source_note"] = source
+                found = []
+                # Resolution may inspect path components, but the source itself must
+                # never be opened or stat'ed by the snapshot comparison branch.
+                with patch("check_kb.read_note", side_effect=AssertionError("unexpected source read")):
+                    inspect_snapshots(KnowledgeBase.load(self.root), {raw: snapshot}, lambda *item: found.append(item))
+                self.assertEqual([item[1] for item in found], ["snapshot-source-scope"])
+
+    def test_snapshot_unreferenced_and_archive_only_sources_not_compared(self):
+        original, raw, metadata = self.prepare_snapshot()
+        metadata["snapshot_source_mtime_ns"] = "0"
+        put(self.root / "raw/未引用快照.md", "---\n" + yaml.safe_dump(metadata, allow_unicode=True) + "---\n原文")
+        note(self.root / "wiki/归档.md", "历史回答", type="archive", archived="2026-11-16", sources=["./概念.md"])
+        self.index()
+        self.assertNotIn("snapshot-source-changed", self.codes())
+
+    def test_snapshot_original_status_failure_is_review(self):
+        original, raw, _ = self.prepare_snapshot()
+        snapshot = read_note(raw)
+        kb = KnowledgeBase.load(self.root)
+        real_stat = Path.stat
+
+        def denied(path, *args, **kwargs):
+            if path == original:
+                raise PermissionError("synthetic original-note status denial")
+            return real_stat(path, *args, **kwargs)
+
+        found = []
+        with patch.object(Path, "stat", denied):
+            inspect_snapshots(kb, {raw: snapshot}, lambda *item: found.append(item))
+        self.assertEqual([(item[0], item[1]) for item in found], [("review", "snapshot-source-unverified")])
 
 
 class LiteralBoundaryTests(unittest.TestCase):

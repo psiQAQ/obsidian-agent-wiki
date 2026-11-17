@@ -12,6 +12,8 @@
     "published": "date",
     "sources": "multitext",
     "source_url": "text",
-    "status": "text"
+    "status": "text",
+    "snapshot_source_note": "text",
+    "snapshot_source_mtime_ns": "text"
   }
 }
