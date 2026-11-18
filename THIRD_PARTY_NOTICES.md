@@ -4,7 +4,7 @@
 
 ## Karpathy LLM Wiki
 
-融合模板的摄入、查询、归档与体检规则，以及 `scripts/evidence.py` 的数字、日期、引语候选及边界匹配方法，改编自 [Astro-Han/karpathy-llm-wiki](https://github.com/Astro-Han/karpathy-llm-wiki) 的相应规则与 `scripts/check_evidence.py`。原始 Skill 保留在 `.agents/skills/karpathy-llm-wiki/`，适配脚本与融合规则在本仓库独立维护。
+融合模板的摄入、查询、归档与体检规则，以及旧版证据检查器的数字、日期、引语候选及边界匹配方法，改编自 [Astro-Han/karpathy-llm-wiki](https://github.com/Astro-Han/karpathy-llm-wiki) 的相应规则与 `scripts/check_evidence.py`。原始 Skill 保留在 `.agents/skills/karpathy-llm-wiki/`，融合规则继续由本仓库维护。历史实现见[旧版证据检查器](https://github.com/psiQAQ/obsidian-agent-wiki/blob/592dd626be508e65316368533c980bdf77003969/scripts/evidence.py)。
 
 2026-11-17 核对[上游提交 eafcc770](https://github.com/Astro-Han/karpathy-llm-wiki/tree/eafcc77001e496cc43499e4923b663aec722c813)：本地原始 Skill 的 `SKILL.md`、`scripts/check_evidence.py`、`LICENSE` 与该版本一致（比较时仅统一 LF/CRLF）。本节 MIT 许可来自该版本的 [LICENSE](https://github.com/Astro-Han/karpathy-llm-wiki/blob/eafcc77001e496cc43499e4923b663aec722c813/LICENSE)，不据此推断原始 Gist 或中文改版全文的授权。
 
@@ -64,11 +64,11 @@ SOFTWARE.
 
 ## 尚未确认的全文来源记录
 
-以下原件保持原位和原文。本轮只补记录，没有选择根许可证，也没有移动、删除或重写全文副本；“待确认”不表示已判定侵权。
+以下材料的原件保存在本地项目档案库。表中材料链接定位到迁移前的公开提交，署名和全文再发布许可仍按各项记录核对。
 
-| 本地材料 | 已有来源信息 | 待确认项 |
+| 历史材料 | 已有来源信息 | 待确认项 |
 | --- | --- | --- |
-| [LLM Wiki 原始说明](docs/karpathy-llm-wiki-skill-redesign-material/llm-wiki.md) | 原件末尾记录 [Karpathy Gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f#file-llm-wiki-md)。 | 本地副本对应版本及全文再发布许可。 |
-| [中文改版](docs/karpathy-llm-wiki-skill-redesign-material/第二大脑知识库%20中文版.md) | 原件末尾记录[飞书来源链接](https://ucn476nzwurg.feishu.cn/wiki/MhuQwtkodizeJqklPcLc4hTQnjd)，并带有自己的日期属性。 | 作者、对应版本及全文再发布许可；不把文件日期当作已核实的发布日期。 |
-| [How I use Obsidian](docs/karpathy-llm-wiki-skill-redesign-material/How%20I%20use%20Obsidian%20Steph%20Ango.md) | 原件记录 [Steph Ango 原文](https://stephango.com/vault)。 | 本地副本对应版本及文章全文再发布许可。 |
-| [X 推文副本](docs/karpathy-llm-wiki-skill-redesign-material/X.md) | 原件已注明复制自推文，作者、链接和发布时间尚未记录。 | 原推文出处、版本及全文再发布许可。 |
+| [LLM Wiki 原始说明](https://github.com/psiQAQ/obsidian-agent-wiki/blob/592dd626be508e65316368533c980bdf77003969/docs/karpathy-llm-wiki-skill-redesign-material/llm-wiki.md) | 原件末尾记录 [Karpathy Gist](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f#file-llm-wiki-md)。 | 本地副本对应版本及全文再发布许可。 |
+| [中文改版](https://github.com/psiQAQ/obsidian-agent-wiki/blob/592dd626be508e65316368533c980bdf77003969/docs/karpathy-llm-wiki-skill-redesign-material/第二大脑知识库%20中文版.md) | 原件末尾记录[飞书来源链接](https://ucn476nzwurg.feishu.cn/wiki/MhuQwtkodizeJqklPcLc4hTQnjd)，并带有自己的日期属性。 | 作者、对应版本及全文再发布许可；不把文件日期当作已核实的发布日期。 |
+| [How I use Obsidian](https://github.com/psiQAQ/obsidian-agent-wiki/blob/592dd626be508e65316368533c980bdf77003969/docs/karpathy-llm-wiki-skill-redesign-material/How%20I%20use%20Obsidian%20Steph%20Ango.md) | 原件记录 [Steph Ango 原文](https://stephango.com/vault)。 | 本地副本对应版本及文章全文再发布许可。 |
+| [X 推文副本](https://github.com/psiQAQ/obsidian-agent-wiki/blob/592dd626be508e65316368533c980bdf77003969/docs/karpathy-llm-wiki-skill-redesign-material/X.md) | 原件已注明复制自推文，作者、链接和发布时间尚未记录。 | 原推文出处、版本及全文再发布许可。 |
