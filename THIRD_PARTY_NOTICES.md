@@ -4,7 +4,7 @@
 
 ## Karpathy LLM Wiki
 
-融合模板的摄入、查询、归档与体检规则，以及旧版证据检查器的数字、日期、引语候选及边界匹配方法，改编自 [Astro-Han/karpathy-llm-wiki](https://github.com/Astro-Han/karpathy-llm-wiki) 的相应规则与 `scripts/check_evidence.py`。原始 Skill 保留在 `.agents/skills/karpathy-llm-wiki/`，融合规则继续由本仓库维护。历史实现见[旧版证据检查器](https://github.com/psiQAQ/obsidian-agent-wiki/blob/592dd626be508e65316368533c980bdf77003969/scripts/evidence.py)。
+融合模板的摄入、查询、归档与体检规则，以及旧版证据检查器的数字、日期、引语候选及边界匹配方法，改编自 [Astro-Han/karpathy-llm-wiki](https://github.com/Astro-Han/karpathy-llm-wiki) 的相应规则与 `scripts/check_evidence.py`。原始 Skill 保留在 `.agents/skills/karpathy-llm-wiki/`，融合规则由 Knowledge Base Manager 随模板维护。历史实现见[旧版证据检查器](https://github.com/psiQAQ/obsidian-agent-wiki/blob/592dd626be508e65316368533c980bdf77003969/scripts/evidence.py)。
 
 2026-11-17 核对[上游提交 eafcc770](https://github.com/Astro-Han/karpathy-llm-wiki/tree/eafcc77001e496cc43499e4923b663aec722c813)：本地原始 Skill 的 `SKILL.md`、`scripts/check_evidence.py`、`LICENSE` 与该版本一致（比较时仅统一 LF/CRLF）。本节 MIT 许可来自该版本的 [LICENSE](https://github.com/Astro-Han/karpathy-llm-wiki/blob/eafcc77001e496cc43499e4923b663aec722c813/LICENSE)，不据此推断原始 Gist 或中文改版全文的授权。
 
@@ -60,7 +60,29 @@ SOFTWARE.
 
 ## Steph Ango 参考模板
 
-模板来源与 MIT 许可保留在上游子模块及融合模板的 [LICENSES.md](knowledge-base-template/llm-wiki/LICENSES.md)。模板许可不等于 Steph Ango 网站文章的全文再发布授权。
+共享页面和分类模板参考了 [Steph Ango 的 Vault 模板](https://github.com/kepano/kepano-obsidian/tree/473697347a0eaac790a6596229c741b3915f3b77)。以下保留模板的 MIT 许可。Steph Ango 网站文章的全文再发布许可需另行核实。
+
+MIT License
+
+Copyright (c) 2023 Steph Ango
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 ## 尚未确认的全文来源记录
 
