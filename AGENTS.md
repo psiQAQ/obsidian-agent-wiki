@@ -23,13 +23,13 @@
 
 ## 共享配置与 Web Clipper
 
-- 共用根 `.obsidian/`，新知识库不复制另一套配置。Obsidian 核心模板插件的模板目录留空。本库模板目录由 **插入本库页面模板** 命令读取。打开本库 Markdown 笔记，选择模板、预览插入和属性冲突后确认；同名属性保留原值。该目录也可供手动复制和独立迁出。各库模板独立维护。融合 LLM Wiki 总览固定绑定所属库及目录映射，跨库或未知上下文显示空结果；现行知识与历史归档分视图，现行知识和按类别浏览隐藏 `status: empty` 的空综述，保留综述文件与 README 入口。
+- 共用根 `.obsidian/`，新知识库不复制另一套配置。Obsidian 核心模板插件的目录和日期格式保存在本机的 `.obsidian/templates.json`，由各设备自行设置。本库模板目录由 **插入本库页面模板** 命令读取。打开本库 Markdown 笔记，选择模板、预览插入和属性冲突后确认；同名属性保留原值。该目录也可供手动复制和独立迁出。各库模板独立维护。融合 LLM Wiki 总览固定绑定所属库及目录映射，跨库或未知上下文显示空结果；现行知识与历史归档分视图，现行知识和按类别浏览隐藏 `status: empty` 的空综述，保留综述文件与 README 入口。
 - 当前人工新建快捷键使用 Vault 根目录。指导用户从目标库的笔记文件夹新建笔记；明确归属后再整理错放内容。
 - Web Clipper 是独立浏览器扩展，它的模板与 Obsidian Templates 的 Markdown 模板不同，也不会由 `.obsidian/` 自动配置。Vault 字段填 Obsidian 中的 Vault 名称，保存位置填 Vault 内相对目录；本机示例及排错见[使用 Obsidian Web Clipper](https://github.com/psiQAQ/obsidian-agent-wiki/blob/592dd626be508e65316368533c980bdf77003969/docs/Obsidian%20Web%20Clipper%20配置与正文抓取.md)。
 - 每库剪藏使用 `knowledge-base/<库名>/Clippings` 或该库实际映射；不存到 Vault 顶层的 Clippings。剪藏后仍须明确发起摄入，原件不因处理完成而搬走。修改浏览器扩展设置或旧库映射须在当前任务范围内。
 - 配置、插件和主题的用户已有修改不混入任务提交；仅为文档验收打开页面，不顺手调整用户的主题或插件。
 - 插件本体及主题本体不纳入根 Git，包括随发行提供的 `manifest.json`；插件目录仅默认放行 `data.json`。每次提交前检查其中的敏感凭据、私人信息、服务地址、模板路径和素材库；发现私密内容时暂不提交该文件，提醒用户决定是否单独忽略，不擅自清空配置。Claudian 的 `.claudian/` 继续保持忽略。
-- 共享 `app.json`、`appearance.json`、`community-plugins.json`、核心插件、模板和属性类型配置可以保留；工作区、书签、图谱等状态继续忽略。取消 Git 跟踪只能使用保留工作区文件的方式，不删除正在使用的插件、主题或改写历史。
+- 共享 `app.json`、`appearance.json`、`community-plugins.json`、核心插件和属性类型配置可以保留；工作区、书签、图谱等状态继续忽略。取消 Git 跟踪只能使用保留工作区文件的方式，不删除正在使用的插件、主题或改写历史。
 - 安装、更新或恢复其他社区插件和主题需按任务取得授权，核对原有设置和实际启用状态。更新 Knowledge Base Manager 的离线包时仅替换包内文件，保留现有 `data.json`。Claudian 的配置和历史资料由使用者维护。
 
 ## 创建与体检

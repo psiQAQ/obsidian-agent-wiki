@@ -140,7 +140,7 @@ obsidian-agent-wiki/                 # Obsidian Vault 根目录（同时作为�
 │   ├── appearance.json              # [受跟踪] 外观配置：Minimal 主题、界面与字体动作设置
 │   ├── core-plugins.json            # [受跟踪] 核心插件开关（启用 bases、properties、templates、sync、graph 等）
 │   ├── community-plugins.json       # [受跟踪] 作者启用的 14 个社区插件 ID 清单
-│   ├── templates.json               # [受跟踪] 核心模板插件日期格式（YYYY-MM-DD）与全局目录配置
+│   ├── templates.json               # [本机配置，Git 忽略] 核心模板插件的日期格式与模板目录
 │   ├── types.json                   # [受跟踪] Vault 级统一属性类型 Schema（避免跨库同名属性类型冲突）
 │   ├── plugins/                     # [规则控制] .gitignore 忽略 */* 插件发行文件，仅默认放行 data.json
 │   │   ├── obsidian-excalidraw-plugin/data.json      # [受跟踪] Excalidraw 公开安全配置
