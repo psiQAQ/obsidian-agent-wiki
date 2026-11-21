@@ -9,10 +9,10 @@
   "promptDelete": false,
   "attachmentFolderPath": "./assets",
   "userIgnoreFilters": [
-    "docs/",
-    "knowledge-base-template/",
-    "AGENTS.md",
     "README.md",
-    "THIRD_PARTY_NOTICES"
-  ]
+    "THIRD_PARTY_NOTICES",
+    "/(^|[/])(AGENTS|LICENSES)[.]md$/",
+    "/(^|[/])Templates[/]/"
+  ],
+  "alwaysUpdateLinks": true
 }

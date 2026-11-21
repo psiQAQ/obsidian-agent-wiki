@@ -4,5 +4,13 @@
   "obsidian-minimal-settings",
   "gogoga-table",
   "gogoga-outline",
-  "gogoga-mindmap"
+  "gogoga-mindmap",
+  "obsidian-git",
+  "knowledge-base-manager",
+  "dataview",
+  "obsidian-meta-bind-plugin",
+  "obsidian-spaced-repetition",
+  "obsidian-tasks-plugin",
+  "quickadd",
+  "templater-obsidian"
 ]

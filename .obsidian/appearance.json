@@ -3,5 +3,7 @@
   "cssTheme": "Minimal",
   "theme": "obsidian",
   "baseFontSizeAction": true,
-  "accentColor": ""
+  "accentColor": "",
+  "showViewHeader": true,
+  "nativeMenus": false
 }

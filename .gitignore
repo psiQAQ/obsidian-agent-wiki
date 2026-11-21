@@ -9,6 +9,8 @@
 /.obsidian/plugins/*/*
 !/.obsidian/plugins/*/data.json
 /.obsidian/plugins/knowledge-base-manager/data.json
+# Review history and per-note schedules share this plugin settings file.
+/.obsidian/plugins/obsidian-spaced-repetition/data.json
 /.obsidian/themes/
 knowledge-base
 /assets/
@@ -20,3 +22,4 @@ __pycache__/
 *.py[cod]
 
 docs/LLM-review/**
+/.kb-manager/
